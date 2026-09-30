@@ -1,143 +1,143 @@
-/**
- * ==========================================================================
- * 玩家角色控制與狀態模組 (player.js)
- * 封裝恐龍角色的狀態機（靜止、奔跑、跳躍、蹲下）、生命值與邊界碰撞計算
- * ==========================================================================
- */
+// =============================================
+// player.js — 玩家角色控制與狀態
+// 負責：跳躍物理、蹲下、動畫狀態切換
+// =============================================
 
-import { CONFIG } from './config.js';
+import CONFIG from './config.js';
 
 export class Player {
     /**
-     * @param {HTMLElement} element - 恐龍角色的 DOM 元素
-     * @param {Object} [config=CONFIG] - 遊戲參數配置
+     * @param {HTMLElement} dinoEl - DOM 上的 #dino 元素
      */
-    constructor(element, config = CONFIG) {
-        this.element = element;
-        this.config = config;
+    constructor(dinoEl) {
+        this.el = dinoEl;
 
-        this.isJumping = false;
+        // 物理狀態
+        this.velocityY   = 0;
+        this.isOnGround  = true;
+        this.isJumping   = false;
+        this.isDucking   = false;
+        this.isDead      = false;
+
+        // 預先快取設定
+        this.cfg    = CONFIG.PLAYER;
+        this.groundY = CONFIG.GROUND_Y;   // 地面 bottom offset
+
+        // 初始位置
+        this._baseBottom = this.groundY;  // 站立時的 bottom（px）
+        this.bottom      = this._baseBottom;
+        this._applyPosition();
+    }
+
+    // ─── Public API ───────────────────────────────────────
+
+    /** 觸發跳躍（已在地面才生效） */
+    jump() {
+        if (!this.isOnGround || this.isDead) return;
+        this.velocityY  = this.cfg.JUMP_FORCE;
+        this.isOnGround = false;
+        this.isJumping  = true;
+        this.el.classList.add('jumping');
+        this.el.classList.remove('ducking');
         this.isDucking = false;
-        this.isRunning = false;
-        this.health = this.config.PLAYER.INITIAL_HEALTH;
-
-        this._jumpTimeout = null;
+        this._applySize();
     }
 
-    /**
-     * 啟動奔跑姿態 (雙腿踏步動畫)
-     */
-    startRunning() {
-        this.isRunning = true;
-        if (this.element) {
-            this.element.classList.add("running");
-        }
-    }
-
-    /**
-     * 停止奔跑姿態
-     */
-    stopRunning() {
-        this.isRunning = false;
-        if (this.element) {
-            this.element.classList.remove("running");
-        }
-    }
-
-    /**
-     * 觸發跳躍動作
-     * @param {Function} [onJumpStart=null] 跳躍開始時的回呼函式 (例如播放音效)
-     * @returns {boolean} 是否成功觸發跳躍
-     */
-    jump(onJumpStart = null) {
-        if (this.isJumping || this.isDucking) {
-            return false;
-        }
-
-        this.isJumping = true;
-        if (this.element) {
-            this.element.classList.add("jump");
-        }
-
-        if (typeof onJumpStart === "function") {
-            onJumpStart();
-        }
-
-        clearTimeout(this._jumpTimeout);
-        this._jumpTimeout = setTimeout(() => {
-            if (this.element) {
-                this.element.classList.remove("jump");
-            }
-            this.isJumping = false;
-        }, this.config.PLAYER.JUMP_DURATION_MS);
-
-        return true;
-    }
-
-    /**
-     * 開始蹲下動作
-     */
-    duckStart() {
-        if (this.isJumping || this.isDucking) {
-            return;
-        }
+    /** 開始蹲下 */
+    duck() {
+        if (this.isDead) return;
+        if (!this.isOnGround) return;   // 空中無法蹲下
         this.isDucking = true;
-        if (this.element) {
-            this.element.classList.add("duck");
-        }
+        this.el.classList.add('ducking');
+        this._applySize();
     }
 
-    /**
-     * 結束蹲下動作
-     */
-    duckEnd() {
+    /** 停止蹲下 */
+    standUp() {
+        if (!this.isDucking) return;
         this.isDucking = false;
-        if (this.element) {
-            this.element.classList.remove("duck");
-        }
+        this.el.classList.remove('ducking');
+        this._applySize();
     }
 
-    /**
-     * 受到傷害
-     * @param {number} amount 傷害量
-     * @returns {number} 剩餘生命值
-     */
-    takeDamage(amount = 1) {
-        this.health = Math.max(0, this.health - amount);
-        return this.health;
+    /** 每 frame 更新（由 game.js 呼叫） */
+    update() {
+        if (this.isDead) return;
+        this._applyGravity();
     }
 
-    /**
-     * 判斷玩家是否存活
-     * @returns {boolean}
-     */
-    isAlive() {
-        return this.health > 0;
+    /** 標記玩家死亡 */
+    die() {
+        this.isDead = true;
+        this.el.classList.add('dead');
+        this.el.classList.remove('jumping', 'ducking');
     }
 
-    /**
-     * 取得實體幾何碰撞邊界
-     * @returns {DOMRect}
-     */
-    getCollisionRect() {
-        return this.element ? this.element.getBoundingClientRect() : null;
-    }
-
-    /**
-     * 重設玩家狀態
-     */
+    /** 重置玩家到初始狀態 */
     reset() {
-        clearTimeout(this._jumpTimeout);
-        this._jumpTimeout = null;
-        this.isJumping = false;
-        this.isDucking = false;
-        this.isRunning = false;
-        this.health = this.config.PLAYER.INITIAL_HEALTH;
+        this.velocityY   = 0;
+        this.isOnGround  = true;
+        this.isJumping   = false;
+        this.isDucking   = false;
+        this.isDead      = false;
+        this.bottom      = this._baseBottom;
+        this.el.className = '';
+        this._applySize();
+        this._applyPosition();
+    }
 
-        if (this.element) {
-            this.element.classList.remove("jump", "duck", "running");
+    /**
+     * 取得碰撞用的矩形（相對於 #game）
+     * @returns {{ left: number, right: number, top: number, bottom: number }}
+     */
+    getRect() {
+        const margin = this.isDucking ? 5 : 8;   // 留一點容錯邊距
+        const w  = this.isDucking ? this.cfg.DUCK_WIDTH  : this.cfg.WIDTH;
+        const h  = this.isDucking ? this.cfg.DUCK_HEIGHT : this.cfg.HEIGHT;
+        const l  = this.cfg.START_LEFT + margin;
+        const b  = this.bottom;
+        return {
+            left:   l,
+            right:  l + w - margin * 2,
+            bottom: b + h,
+            top:    b,
+        };
+    }
+
+    // ─── Private Helpers ──────────────────────────────────
+
+    _applyGravity() {
+        if (this.isOnGround) return;
+
+        this.velocityY += this.cfg.GRAVITY;
+        if (this.velocityY > this.cfg.MAX_FALL) {
+            this.velocityY = this.cfg.MAX_FALL;
+        }
+
+        this.bottom -= this.velocityY;  // velocityY 負值時 bottom 增大（上升）
+
+        if (this.bottom <= this._baseBottom) {
+            this.bottom     = this._baseBottom;
+            this.velocityY  = 0;
+            this.isOnGround = true;
+            this.isJumping  = false;
+            this.el.classList.remove('jumping');
+        }
+
+        this._applyPosition();
+    }
+
+    _applyPosition() {
+        this.el.style.bottom = `${this.bottom}px`;
+    }
+
+    _applySize() {
+        if (this.isDucking) {
+            this.el.style.width  = `${this.cfg.DUCK_WIDTH}px`;
+            this.el.style.height = `${this.cfg.DUCK_HEIGHT}px`;
+        } else {
+            this.el.style.width  = `${this.cfg.WIDTH}px`;
+            this.el.style.height = `${this.cfg.HEIGHT}px`;
         }
     }
 }
-
-export default Player;

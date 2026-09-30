@@ -1,603 +1,474 @@
-/* ==========================================================================
-   DINO RUN - 遊戲樣式表 (style.css)
-   畫面置中排版、畫布外觀、角色動畫、環境元素與 UI 介面
-   ========================================================================== */
+/* =============================================
+   style.css — DINO RUN 全域樣式
+   畫面置中排版、畫布外觀、夜間模式
+   ============================================= */
 
-/* --------------------------------------------------------------------------
-   1. 色彩主題與全域變數 (Themes & CSS Variables)
-   -------------------------------------------------------------------------- */
-:root {
-    --bg-color: #f7f7f7;
-    --text-color: #222222;
-    --game-bg: #ffffff;
-    --game-border: #333333;
-    --ground-color: #333333;
-    --overlay-bg: rgba(255, 255, 255, 0.94);
-    --element-fill: #333333;
-    --cloud-color: #dddddd;
-    --sun-color: #e5b022;
-}
-
-body.night {
-    --bg-color: #1e1e1e;
-    --text-color: #eeeeee;
-    --game-bg: #222222;
-    --game-border: #888888;
-    --ground-color: #cccccc;
-    --overlay-bg: rgba(30, 30, 30, 0.94);
-    --element-fill: #eeeeee;
-    --cloud-color: #444444;
-    --sun-color: #f4e8c1;
-}
-
-/* --------------------------------------------------------------------------
-   2. 畫面置中與版面結構 (Layout & Base)
-   -------------------------------------------------------------------------- */
+/* ---------- Reset & Base ---------- */
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
-    user-select: none;
-    -webkit-user-select: none;
 }
 
 body {
-    margin: 0;
-    padding: 20px 0;
+    font-family: 'Courier New', Courier, monospace;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     min-height: 100vh;
     display: flex;
-    justify-content: center;
     align-items: center;
-    background: var(--bg-color);
-    color: var(--text-color);
-    font-family: "Courier New", Consolas, Monaco, monospace;
-    transition: background-color 0.4s ease, color 0.4s ease;
+    justify-content: center;
+    color: #e0e0e0;
 }
 
+/* ---------- Container ---------- */
 .container {
-    width: 1000px;
-    max-width: 95%;
-    margin: 0 auto;
+    width: 900px;
+    max-width: 98vw;
 }
 
-/* 遊戲主畫布容器 */
+/* ---------- Header ---------- */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px 15px 0 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-dino {
+    font-size: 40px;
+    animation: bounce 1s infinite;
+}
+
+.logo h1 {
+    font-size: 28px;
+    color: #4fc3f7;
+    text-shadow: 0 0 20px rgba(79, 195, 247, 0.5);
+    letter-spacing: 3px;
+}
+
+.logo p {
+    font-size: 12px;
+    color: #90a4ae;
+}
+
+.score-board {
+    text-align: right;
+    font-size: 14px;
+    color: #90a4ae;
+}
+
+.score {
+    font-size: 22px;
+    color: #4fc3f7;
+    font-weight: bold;
+    display: inline-block;
+    min-width: 60px;
+}
+
+/* ---------- Game Stage ---------- */
 #game {
     position: relative;
     width: 100%;
-    height: 330px;
+    height: 300px;
+    background: linear-gradient(to bottom, #87CEEB 0%, #b0e0f5 60%, #c8f0a0 60%, #90EE90 100%);
     overflow: hidden;
-    background: var(--game-bg);
-    border: 3px solid var(--game-border);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    transition: background-color 0.4s ease, border-color 0.4s ease;
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+    border-right: 3px solid rgba(255, 255, 255, 0.2);
+    transition: background 0.5s ease;
 }
 
-/* --------------------------------------------------------------------------
-   3. 環境背景元素 (Environment & Sky)
-   -------------------------------------------------------------------------- */
-/* 地面跑道線 */
-.ground {
-    position: absolute;
-    left: 0;
-    bottom: 45px;
-    width: 100%;
-    height: 3px;
-    background: var(--ground-color);
-    z-index: 2;
-    transition: background-color 0.4s ease;
+/* Night mode for game stage */
+#game.night {
+    background: linear-gradient(to bottom, #0a0a2e 0%, #1a1a4e 60%, #2d4a1e 60%, #1a3a0a 100%);
 }
 
-/* 太陽 / 月亮 */
+/* ---------- Background Decorations ---------- */
 .sun {
     position: absolute;
-    top: 45px;
-    right: 100px;
-    width: 44px;
-    height: 44px;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, #FFD700, #FFA500);
     border-radius: 50%;
-    background: var(--sun-color);
-    box-shadow: 0 0 16px var(--sun-color);
-    transition: background-color 0.4s ease, box-shadow 0.4s ease;
-    z-index: 1;
+    top: 20px;
+    right: 80px;
+    box-shadow: 0 0 30px rgba(255, 200, 0, 0.6);
+    transition: background 0.5s ease, box-shadow 0.5s ease;
 }
 
-/* 雲朵 */
-.cloud {
-    position: absolute;
-    width: 70px;
-    height: 20px;
-    background: var(--cloud-color);
-    border-radius: 20px;
-    transition: background-color 0.4s ease;
-    z-index: 1;
+.night .sun {
+    background: radial-gradient(circle, #f0f0f0, #d0d0d0);
+    box-shadow: 0 0 20px rgba(220, 220, 255, 0.5);
 }
 
-.cloud::before,
-.cloud::after {
-    content: "";
-    position: absolute;
-    background: inherit;
-    border-radius: 50%;
-}
-
-.cloud::before {
-    width: 34px;
-    height: 34px;
-    left: 14px;
-    top: -16px;
-}
-
-.cloud::after {
-    width: 26px;
-    height: 26px;
-    right: 10px;
-    top: -12px;
-}
-
-.cloud1 {
-    top: 55px;
-    left: 100%;
-    animation: floatCloud 24s linear infinite;
-}
-
-.cloud2 {
-    top: 100px;
-    left: 100%;
-    animation: floatCloud 18s linear infinite;
-    animation-delay: -9s;
-}
-
-@keyframes floatCloud {
-    from {
-        left: 100%;
-    }
-    to {
-        left: -120px;
-    }
-}
-
-/* 夜晚星空點綴 */
 .stars {
-    display: none;
     position: absolute;
-    inset: 0;
-    z-index: 0;
+    width: 100%;
+    height: 60%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
-body.night .stars {
-    display: block;
+.night .stars {
+    opacity: 1;
 }
 
 .star {
     position: absolute;
     width: 3px;
     height: 3px;
-    background: #ffffff;
+    background: white;
     border-radius: 50%;
-    box-shadow: 0 0 3px #ffffff;
-    animation: twinkle 2s infinite ease-in-out alternate;
+    animation: twinkle 2s infinite alternate;
 }
 
-@keyframes twinkle {
-    from { opacity: 0.3; }
-    to { opacity: 1; }
+.star:nth-child(2n) { animation-delay: 0.5s; }
+.star:nth-child(3n) { animation-delay: 1s; }
+
+/* Clouds */
+.cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.7;
 }
 
-/* --------------------------------------------------------------------------
-   4. 恐龍玩家角色 (Dino Player)
-   -------------------------------------------------------------------------- */
+.cloud::before,
+.cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+}
+
+.cloud1 {
+    width: 80px;
+    height: 25px;
+    top: 40px;
+    left: 15%;
+    animation: cloudMove 20s linear infinite;
+}
+
+.cloud1::before {
+    width: 35px;
+    height: 35px;
+    top: -15px;
+    left: 15px;
+}
+
+.cloud1::after {
+    width: 25px;
+    height: 25px;
+    top: -10px;
+    left: 35px;
+}
+
+.cloud2 {
+    width: 60px;
+    height: 20px;
+    top: 60px;
+    left: 55%;
+    animation: cloudMove 25s linear infinite 5s;
+}
+
+.cloud2::before {
+    width: 28px;
+    height: 28px;
+    top: -12px;
+    left: 10px;
+}
+
+.cloud2::after {
+    width: 20px;
+    height: 20px;
+    top: -8px;
+    left: 28px;
+}
+
+/* ---------- Ground ---------- */
+.ground {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 10px;
+    background: repeating-linear-gradient(
+        90deg,
+        #8B6914 0px,
+        #8B6914 30px,
+        #6B4F14 30px,
+        #6B4F14 60px
+    );
+}
+
+/* ---------- Dino ---------- */
 #dino {
     position: absolute;
-    left: 90px;
-    bottom: 48px;
-    width: 55px;
-    height: 65px;
-    background: var(--element-fill);
-    z-index: 20;
+    bottom: 10px;
+    left: 80px;
+    width: 50px;
+    height: 60px;
+    background: linear-gradient(145deg, #2ecc71, #27ae60);
+    border-radius: 8px 8px 4px 4px;
+    transition: background 0.3s;
+}
+
+#dino.ducking {
+    height: 35px;
+    width: 70px;
     border-radius: 4px;
-    transition: background-color 0.2s ease;
 }
 
-/* 恐龍頭部 */
-#dino::before {
-    content: "";
-    position: absolute;
-    width: 42px;
-    height: 38px;
-    right: -18px;
-    top: -20px;
-    background: inherit;
-    border-radius: 6px 12px 0 0;
+#dino.dead {
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    animation: deathShake 0.3s ease;
 }
 
-/* 恐龍尾巴 */
-#dino::after {
-    content: "";
-    position: absolute;
-    width: 28px;
-    height: 12px;
-    left: -20px;
-    top: 18px;
-    background: inherit;
-    transform: rotate(-25deg);
-    border-radius: 4px 0 0 4px;
-}
-
-/* 恐龍眼睛 */
 .eye {
     position: absolute;
-    width: 7px;
-    height: 7px;
-    right: -8px;
-    top: -12px;
-    background: var(--game-bg);
+    width: 10px;
+    height: 10px;
+    background: #fff;
     border-radius: 50%;
-    z-index: 30;
-    transition: background-color 0.2s ease;
+    top: 10px;
+    right: 8px;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
 }
 
-/* 恐龍雙腿 */
+.eye::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+}
+
 .leg {
     position: absolute;
-    width: 11px;
-    height: 23px;
+    width: 10px;
+    height: 18px;
+    background: #27ae60;
+    border-radius: 3px;
     bottom: -18px;
-    background: inherit;
 }
 
 .leg1 {
-    left: 8px;
+    left: 10px;
+    animation: runLeg1 0.3s steps(1) infinite;
 }
 
 .leg2 {
-    right: 8px;
+    left: 28px;
+    animation: runLeg2 0.3s steps(1) infinite;
 }
 
-/* 奔跑動畫：雙腿交替擺動 */
-#dino.running .leg1 {
-    animation: runLeg1 0.16s infinite alternate ease-in-out;
+#dino.jumping .leg1,
+#dino.jumping .leg2 {
+    animation: none;
+    transform: none;
 }
 
-#dino.running .leg2 {
-    animation: runLeg2 0.16s infinite alternate ease-in-out;
+#dino.ducking .leg1,
+#dino.ducking .leg2 {
+    bottom: -12px;
+    height: 12px;
 }
 
-@keyframes runLeg1 {
-    from { transform: rotate(26deg); }
-    to { transform: rotate(-26deg); }
-}
-
-@keyframes runLeg2 {
-    from { transform: rotate(-26deg); }
-    to { transform: rotate(26deg); }
-}
-
-/* 跳躍動作動畫 */
-#dino.jump {
-    animation: dinoJump 0.65s cubic-bezier(0.2, 0.8, 0.4, 1);
-}
-
-@keyframes dinoJump {
-    0% {
-        bottom: 48px;
-    }
-    45% {
-        bottom: 195px;
-    }
-    100% {
-        bottom: 48px;
-    }
-}
-
-/* 蹲下動作 (縮低高度) */
-#dino.duck {
-    height: 38px;
-    bottom: 48px;
-}
-
-#dino.duck::before {
-    top: -12px;
-    height: 30px;
-}
-
-#dino.duck .leg {
-    height: 15px;
-}
-
-/* --------------------------------------------------------------------------
-   5. 障礙物與敵人樣式 (Obstacles & Enemies)
-   -------------------------------------------------------------------------- */
-/* 仙人掌群組容器 */
-.obstacle.cactus-group {
+/* ---------- Obstacles ---------- */
+.obstacle {
     position: absolute;
-    bottom: 48px;
-    left: 100%;
-    display: flex;
-    gap: 8px;
-    z-index: 10;
+    bottom: 10px;
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
 }
 
-/* 單支仙人掌主幹 */
-.cactus {
-    position: relative;
+.obstacle-cactus {
     width: 25px;
-    height: 65px;
-    background: var(--element-fill);
-    border-radius: 4px 4px 0 0;
-    transition: background-color 0.2s ease;
 }
 
-/* 仙人掌分枝手臂 */
-.cactus::before,
-.cactus::after {
-    content: "";
-    position: absolute;
-    width: 15px;
-    height: 28px;
-    top: 20px;
-    background: var(--element-fill);
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
+.obstacle-double {
+    width: 45px;
 }
 
-.cactus::before {
-    left: -13px;
-    border-right: 0;
+.obstacle-flying {
+    bottom: 80px;
+    background: linear-gradient(145deg, #9b59b6, #8e44ad);
+    box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+    border-radius: 50% 50% 20% 20%;
 }
 
-.cactus::after {
-    right: -13px;
-    border-left: 0;
-}
-
-/* 小仙人掌 */
-.cactus.small {
-    width: 20px;
-    height: 44px;
-}
-
-.cactus.small::before,
-.cactus.small::after {
-    width: 12px;
-    height: 20px;
-    top: 14px;
-}
-
-.cactus.small::before {
-    left: -10px;
-}
-
-.cactus.small::after {
-    right: -10px;
-}
-
-/* 飛行翼手龍 (鳥) */
-.obstacle.bird {
-    position: absolute;
-    left: 100%;
-    width: 46px;
-    height: 22px;
-    background: var(--element-fill);
-    border-radius: 4px;
-    z-index: 10;
-    transition: background-color 0.2s ease;
-    animation: birdBob 0.3s infinite alternate ease-in-out;
-}
-
-/* 翼手龍翅膀 */
-.obstacle.bird::before {
-    content: "";
-    position: absolute;
-    width: 26px;
-    height: 10px;
-    left: -12px;
-    top: -9px;
-    background: var(--element-fill);
-    transform: rotate(-22deg);
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-    animation: birdWingLeft 0.2s infinite alternate ease-in-out;
-}
-
-.obstacle.bird::after {
-    content: "";
-    position: absolute;
-    width: 26px;
-    height: 10px;
-    right: -14px;
-    top: 5px;
-    background: var(--element-fill);
-    transform: rotate(18deg);
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-    animation: birdWingRight 0.2s infinite alternate ease-in-out;
-}
-
-@keyframes birdBob {
-    from { margin-top: 0; }
-    to { margin-top: -3px; }
-}
-
-@keyframes birdWingLeft {
-    from { transform: rotate(-28deg); }
-    to { transform: rotate(-10deg); }
-}
-
-@keyframes birdWingRight {
-    from { transform: rotate(10deg); }
-    to { transform: rotate(28deg); }
-}
-
-/* --------------------------------------------------------------------------
-   6. UI 介面、選單與 HUD (UI & Overlays)
-   -------------------------------------------------------------------------- */
-/* 頂部 Header */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.logo-icon {
-    width: 46px;
-    height: 46px;
-    object-fit: contain;
-    transition: filter 0.4s ease;
-}
-
-body.night .logo-icon {
-    filter: invert(1);
-}
-
-.logo-dino {
-    font-size: 48px;
-    line-height: 1;
-}
-
-.logo h1 {
-    margin: 0;
-    font-size: 30px;
-    letter-spacing: 3px;
-    font-weight: 800;
-}
-
-.logo p {
-    margin: 4px 0 0;
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
-    font-size: 14px;
-    opacity: 0.8;
-}
-
-/* 分數看板 */
-.score-board {
-    text-align: right;
-    font-size: 20px;
-    line-height: 1.6;
-}
-
-.score {
-    letter-spacing: 3px;
-    font-weight: bold;
-}
-
-/* 覆蓋層通用設定 */
-#startScreen,
-#gameOver {
+/* ---------- Start Screen ---------- */
+#startScreen {
     position: absolute;
     inset: 0;
-    background: var(--overlay-bg);
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    text-align: center;
-    padding: 20px;
-    transition: background-color 0.3s ease;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+    z-index: 10;
+    border-radius: 0;
 }
 
-/* 開始畫面覆蓋層 */
-#startScreen {
-    z-index: 50;
+.start-content {
+    text-align: center;
+    color: white;
 }
 
 .start-content h2 {
-    font-size: 38px;
-    margin: 0 0 12px;
-    letter-spacing: 2px;
+    font-size: 36px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px rgba(79, 195, 247, 0.8);
+    color: #4fc3f7;
 }
 
 .start-content p {
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
-    font-size: 18px;
-    margin: 0 0 16px;
-    opacity: 0.9;
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #b0bec5;
 }
 
 .start-key {
-    display: inline-block;
-    padding: 10px 24px;
-    border: 3px solid currentColor;
+    background: rgba(79, 195, 247, 0.2);
+    border: 2px solid #4fc3f7;
+    border-radius: 10px;
+    padding: 12px 24px;
     font-size: 18px;
-    font-weight: bold;
-    border-radius: 4px;
-    animation: pulseKey 1.4s infinite alternate ease-in-out;
+    color: #4fc3f7;
+    animation: pulse 1.5s infinite;
 }
 
-@keyframes pulseKey {
-    from { transform: scale(1); opacity: 0.9; }
-    to { transform: scale(1.05); opacity: 1; }
-}
-
-/* 遊戲結束覆蓋層 */
+/* ---------- Game Over Screen ---------- */
 #gameOver {
+    position: absolute;
+    inset: 0;
     display: none;
-    z-index: 60;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(3px);
+    z-index: 10;
+    color: white;
+    text-align: center;
 }
 
 #gameOver h2 {
-    margin: 0 0 10px;
-    font-size: 40px;
-    letter-spacing: 3px;
+    font-size: 42px;
+    color: #e74c3c;
+    text-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+    margin-bottom: 15px;
+    animation: pulse 0.8s infinite;
 }
 
 #gameOver p {
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
     font-size: 20px;
-    margin: 8px 0;
+    margin-bottom: 15px;
+    color: #ecf0f1;
 }
 
-/* 按鈕樣式 */
-button {
-    padding: 10px 24px;
-    border: 2px solid currentColor;
-    background: transparent;
-    color: inherit;
-    font-family: inherit;
-    font-size: 17px;
-    font-weight: bold;
+#gameOver button {
+    background: linear-gradient(135deg, #4fc3f7, #0288d1);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 18px;
+    border-radius: 25px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+    font-family: 'Courier New', Courier, monospace;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-button:hover {
-    background: var(--text-color);
-    color: var(--bg-color);
+#gameOver button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(79, 195, 247, 0.5);
 }
 
-button:active {
-    transform: scale(0.97);
-}
-
-/* 底部操作與資訊區 */
+/* ---------- Controls Footer ---------- */
 .controls {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-top: 16px;
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
-    font-size: 15px;
+    justify-content: space-around;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0 0 15px 15px;
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    font-size: 14px;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
 }
 
 .key {
     display: inline-block;
-    margin: 0 3px;
-    padding: 4px 10px;
-    border: 2px solid currentColor;
-    border-radius: 4px;
-    font-family: "Courier New", Consolas, monospace;
-    font-weight: bold;
-    font-size: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 12px;
+    margin-right: 4px;
+    font-family: 'Courier New', Courier, monospace;
 }
 
 .mode-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+    padding: 6px 14px;
+    border-radius: 20px;
     cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+.mode-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- Animations ---------- */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-5px); }
+}
+
+@keyframes cloudMove {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-1200px); }
+}
+
+@keyframes twinkle {
+    from { opacity: 0.3; transform: scale(0.8); }
+    to   { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.6; }
+}
+
+@keyframes runLeg1 {
+    0%  { transform: translateY(0); }
+    50% { transform: translateY(8px); }
+}
+
+@keyframes runLeg2 {
+    0%  { transform: translateY(8px); }
+    50% { transform: translateY(0); }
+}
+
+@keyframes deathShake {
+    0%, 100% { transform: translateX(0); }
+    25%       { transform: translateX(-5px) rotate(-5deg); }
+    75%       { transform: translateX(5px) rotate(5deg); }
 }

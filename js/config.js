@@ -1,59 +1,59 @@
-/**
- * ==========================================================================
- * 遊戲設定與常數配置模組 (config.js)
- * 集中管理畫布尺寸、速度曲線、計分頻率、角色碰撞、障礙物生成等核心參數
- * ==========================================================================
- */
+// =============================================
+// config.js — 遊戲全域設定參數
+// 所有魔法數字集中在此，方便調整平衡
+// =============================================
 
-export const CONFIG = {
-    // 畫布與舞台設定
-    CANVAS: {
-        WIDTH: 1000,
-        HEIGHT: 330
-    },
+const CONFIG = {
+    // ---------- 畫布 / 場地 ----------
+    GAME_WIDTH:  900,
+    GAME_HEIGHT: 300,
+    GROUND_Y:    10,       // 地面厚度（px），恐龍的 bottom offset
 
-    // 遊戲物理與主循環
-    GAME: {
-        BASE_SPEED: 6,                     // 初始移動速度 (px/frame)
-        SPEED_INCREMENT_INTERVAL: 100,     // 每獲得多少分增加一次速度
-        SPEED_INCREMENT_AMOUNT: 0.7,       // 每次提升的速度量 (px/frame)
-        SCORE_INTERVAL_MS: 100,            // 每獲得 1 分之時間間隔 (毫秒)
-        TICK_INTERVAL_MS: 20               // 遊戲主循環週期 (50 FPS)
-    },
-
-    // 玩家角色 (恐龍) 數值設定
+    // ---------- 玩家 ----------
     PLAYER: {
-        JUMP_DURATION_MS: 650,             // 跳躍滯空與動畫時間 (毫秒)
-        INITIAL_HEALTH: 1,                 // 玩家初始生命值 (預設 1 點血量，撞擊即結束)
-        COLLISION_PADDING: {               // 碰撞箱內縮補償 (提升遊戲手感與容錯率)
-            LEFT: 8,
-            RIGHT: 8,
-            TOP: 8,
-            BOTTOM: 5
-        }
+        START_LEFT:    80,       // 恐龍距左側距離（px）
+        WIDTH:         50,
+        HEIGHT:        60,
+        DUCK_WIDTH:    70,
+        DUCK_HEIGHT:   35,
+        JUMP_FORCE:   -18,       // 跳躍初速（負值 = 向上）
+        GRAVITY:        1.0,     // 每 frame 增加的下落速度
+        MAX_FALL:      20,       // 最大下落速度
     },
 
-    // 障礙物與敵人生成設定
-    OBSTACLES: {
-        BASE_SPAWN_DELAY: 1500,            // 初始生成間隔 (毫秒)
-        MIN_SPAWN_DELAY: 650,              // 最短生成間隔下限 (毫秒)
-        SPAWN_RATE_SCALE: 2.5,             // 依分數動態縮短生成時間之係數
-        BIRD_SPAWN_CHANCE: 0.25,           // 飛行翼手龍出現機率
-        DOUBLE_CACTUS_CHANCE: 0.35,        // 雙仙人掌出現機率
-        SMALL_CACTUS_CHANCE: 0.30,         // 小仙人掌出現機率
-        BIRD_HEIGHTS: [105, 145, 185],     // 翼手龍三種飛行高度 (低空需蹲下、中空、高空可直跑)
-        COLLISION_PADDING: {               // 障礙物碰撞箱容錯內縮
-            LEFT: 2,
-            RIGHT: 2,
-            TOP: 2,
-            BOTTOM: 2
-        }
+    // ---------- 分數 ----------
+    SCORE: {
+        INCREMENT_PER_FRAME: 0.1,   // 每 frame 增加分數
+        HIGH_SCORE_KEY: 'dinoHighScore',
     },
 
-    // 本地快取儲存鍵值
-    STORAGE: {
-        HIGH_SCORE_KEY: "dinoHighScore"
-    }
+    // ---------- 速度 ----------
+    SPEED: {
+        INITIAL:      4,        // 初始像素/frame
+        MAX:         14,        // 最高速度上限
+        INCREMENT:    0.002,    // 每 frame 速度遞增量
+    },
+
+    // ---------- 障礙物 ----------
+    OBSTACLE: {
+        MIN_INTERVAL: 60,       // 最短生成間隔（frame）
+        MAX_INTERVAL: 120,      // 最長生成間隔（frame）
+        TYPES: [
+            // 仙人掌（矮）
+            { cssClass: 'obstacle obstacle-cactus', width: 25, height: 45, flyingY: false },
+            // 仙人掌（高）
+            { cssClass: 'obstacle obstacle-cactus', width: 25, height: 60, flyingY: false },
+            // 雙仙人掌
+            { cssClass: 'obstacle obstacle-double', width: 45, height: 45, flyingY: false },
+            // 飛行障礙物（低空）
+            { cssClass: 'obstacle obstacle-flying', width: 40, height: 30, flyingY: true, flyingBottom: 60 },
+            // 飛行障礙物（高空）
+            { cssClass: 'obstacle obstacle-flying', width: 40, height: 30, flyingY: true, flyingBottom: 100 },
+        ],
+    },
+
+    // ---------- 夜間模式 ----------
+    NIGHT_SCORE_THRESHOLD: 500,    // 達到此分數後自動切換夜間（0 = 手動）
 };
 
 export default CONFIG;

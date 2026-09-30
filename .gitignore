@@ -1,29 +1,17 @@
-# Windows 系統暫存檔
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk
-
-# macOS 系統檔
+# OS 暫存檔
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
+Thumbs.db
+desktop.ini
 
-# 編輯器暫存檔
+# 編輯器設定
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+*.suo
+*.user
 
-# 日誌與除錯
-*.log
+# Node
+node_modules/
 npm-debug.log*
 
-# 本地環境設定（不應上傳）
-.env
-.env.local
+# 日誌
+*.log

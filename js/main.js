@@ -1,61 +1,15 @@
-/**
- * ==========================================================================
- * 遊戲啟動與應用引導入口 (main.js)
- * 負責實例化 Game 主控制器、註冊全域控制介面與 DOM 生命週期掛載
- * ==========================================================================
- */
+// =============================================
+// main.js — 遊戲啟動入口
+// 等待 DOM 就緒後建立 Game 實例
+// =============================================
 
 import { Game } from './game.js';
 
-let gameInstance = null;
+// 等待 DOM 完全載入後初始化遊戲
+window.addEventListener('DOMContentLoaded', () => {
+    // 建立遊戲實例（自動繫結事件、顯示開始畫面）
+    const game = new Game();   // eslint-disable-line no-unused-vars
 
-// 初始化啟動
-function initGame() {
-    gameInstance = new Game();
-    window.game = gameInstance;
-
-    // 綁定全域函式供 HTML 按鈕或除錯使用
-    window.restartGame = () => {
-        if (gameInstance) {
-            gameInstance.restart();
-        }
-    };
-
-    window.toggleNight = () => {
-        if (gameInstance) {
-            gameInstance.toggleNight();
-        }
-    };
-
-    window.startGame = () => {
-        if (gameInstance) {
-            gameInstance.start();
-        }
-    };
-
-    // 額外綁定按鈕 DOM 事件監聽，雙重保證互動正常
-    const restartBtn = document.getElementById("restartBtn");
-    if (restartBtn) {
-        restartBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.restartGame();
-        });
-    }
-
-    const nightToggleBtn = document.getElementById("nightToggleBtn");
-    if (nightToggleBtn) {
-        nightToggleBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.toggleNight();
-        });
-    }
-}
-
-// 確保 DOM 載入後執行初始化
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initGame);
-} else {
-    initGame();
-}
-
-export { gameInstance as game };
+    // 將 game 掛載到 window，方便瀏覽器控制台除錯（可選）
+    // window._game = game;
+});
