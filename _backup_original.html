@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DINO RUN - 恐龍跳躍 (多層次架構版)</title>
+
+    <!-- =========================
+         模組化樣式層 (CSS Layer)
+    ========================== -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/dino.css">
+    <link rel="stylesheet" href="css/obstacles.css">
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- =========================
+             標題列 (Header)
+        ========================== -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-dino">🦖</div>
+                <div>
+                    <h1>DINO RUN</h1>
+                    <p>躲避障礙，跑得更遠！</p>
+                </div>
+            </div>
+
+            <div class="score-board">
+                分數 <span id="score" class="score">00000</span>
+                <br>
+                最高 <span id="highScore" class="score">00000</span>
+            </div>
+        </header>
+
+        <!-- =========================
+             遊戲舞台 (Game Stage)
+        ========================== -->
+        <main id="game">
+
+            <!-- 背景環境 -->
+            <div class="sun"></div>
+
+            <div class="stars">
+                <span class="star" style="left:10%;top:20%"></span>
+                <span class="star" style="left:20%;top:35%"></span>
+                <span class="star" style="left:35%;top:15%"></span>
+                <span class="star" style="left:50%;top:30%"></span>
+                <span class="star" style="left:70%;top:18%"></span>
+                <span class="star" style="left:85%;top:35%"></span>
+            </div>
+
+            <div class="cloud cloud1"></div>
+            <div class="cloud cloud2"></div>
+
+            <!-- 開始畫面覆蓋層 -->
+            <section id="startScreen">
+                <div class="start-content">
+                    <h2>🦖 DINO RUN</h2>
+                    <p>準備好開始挑戰了嗎？</p>
+                    <div class="start-key">按 SPACE 或 ↑ 開始</div>
+                </div>
+            </section>
+
+            <!-- 恐龍實體 -->
+            <div id="dino">
+                <div class="eye"></div>
+                <div class="leg leg1"></div>
+                <div class="leg leg2"></div>
+            </div>
+
+            <!-- 地面 -->
+            <div class="ground"></div>
+
+            <!-- 遊戲結束覆蓋層 -->
+            <section id="gameOver">
+                <h2>GAME OVER</h2>
+                <p>分數：<span id="finalScore">00000</span></p>
+                <button onclick="restartGame()">↻ 重新開始</button>
+                <p style="margin-top: 15px; font-size: 16px;">按 SPACE 也可以重新開始</p>
+            </section>
+
+        </main>
+
+        <!-- =========================
+             操作控制區 (Controls)
+        ========================== -->
+        <footer class="controls">
+            <div>
+                <span class="key">↑</span>
+                <span class="key">SPACE</span>
+                跳躍
+            </div>
+
+            <div>
+                <span class="key">↓</span>
+                蹲下
+            </div>
+
+            <div>
+                速度：<span id="speedText">1.0x</span>
+            </div>
+
+            <button class="mode-btn" onclick="toggleNight()">
+                ☀ / 🌙 夜晚模式
+            </button>
+        </footer>
+
+    </div>
+
+    <!-- =========================
+         多層次結構化腳本 (JS Engine & Modules)
+    ========================== -->
+    <!-- 1. 配置層 -->
+    <script src="js/config.js"></script>
+    
+    <!-- 2. 核心基礎設施 (音效、碰撞、輸入、計分) -->
+    <script src="js/core/AudioSystem.js"></script>
+    <script src="js/core/Collision.js"></script>
+    <script src="js/core/InputHandler.js"></script>
+    <script src="js/core/ScoreManager.js"></script>
+
+    <!-- 3. 實體層 (恐龍、障礙物基類與生成器) -->
+    <script src="js/entities/Dino.js"></script>
+    <script src="js/entities/Obstacle.js"></script>
+    <script src="js/entities/ObstacleManager.js"></script>
+
+    <!-- 4. UI 視圖層 -->
+    <script src="js/ui/UIManager.js"></script>
+
+    <!-- 5. 遊戲主控制器 (狀態機與循環) -->
+    <script src="js/core/Game.js"></script>
+
+    <!-- 6. 應用入口啟動程式 -->
+    <script src="js/main.js"></script>
+
+</body>
+</html>

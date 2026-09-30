@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DINO RUN - 恐龍跳躍</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部標題與計分看板 -->
+        <header class="header">
+            <div class="logo">
+                <img src="./assets/images/dino.svg" alt="DINO" class="logo-icon" width="46" height="46">
+                <div>
+                    <h1>DINO RUN</h1>
+                    <p>躲避障礙，跑得更遠！</p>
+                </div>
+            </div>
+
+            <div class="score-board">
+                分數 <span id="score" class="score">00000</span>
+                <br>
+                最高 <span id="highScore" class="score">00000</span>
+            </div>
+        </header>
+
+        <!-- 遊戲主舞台 (畫布容器) -->
+        <main id="game">
+            <!-- 天空與背景元素 -->
+            <div class="sun"></div>
+            <div class="stars">
+                <span class="star" style="left: 10%; top: 20%;"></span>
+                <span class="star" style="left: 20%; top: 35%;"></span>
+                <span class="star" style="left: 35%; top: 15%;"></span>
+                <span class="star" style="left: 50%; top: 30%;"></span>
+                <span class="star" style="left: 70%; top: 18%;"></span>
+                <span class="star" style="left: 85%; top: 35%;"></span>
+            </div>
+            <div class="cloud cloud1"></div>
+            <div class="cloud cloud2"></div>
+
+            <!-- 開始畫面覆蓋層 -->
+            <section id="startScreen">
+                <div class="start-content">
+                    <h2>🦖 DINO RUN</h2>
+                    <p>準備好開始挑戰了嗎？</p>
+                    <div class="start-key">按 SPACE 或 ↑ 開始</div>
+                </div>
+            </section>
+
+            <!-- 玩家角色 (恐龍) -->
+            <div id="dino">
+                <div class="eye"></div>
+                <div class="leg leg1"></div>
+                <div class="leg leg2"></div>
+            </div>
+
+            <!-- 地面跑道 -->
+            <div class="ground"></div>
+
+            <!-- 遊戲結束覆蓋層 -->
+            <section id="gameOver">
+                <h2>GAME OVER</h2>
+                <p>分數：<span id="finalScore">00000</span></p>
+                <button id="restartBtn" onclick="restartGame()">↻ 重新開始</button>
+                <p style="margin-top: 15px; font-size: 15px;">按 SPACE 也可以重新開始</p>
+            </section>
+        </main>
+
+        <!-- 底部控制提示區 -->
+        <footer class="controls">
+            <div>
+                <span class="key">↑</span>
+                <span class="key">SPACE</span>
+                跳躍
+            </div>
+            <div>
+                <span class="key">↓</span>
+                蹲下
+            </div>
+            <div>
+                速度：<span id="speedText">1.0x</span>
+            </div>
+            <button id="nightToggleBtn" class="mode-btn" onclick="toggleNight()">
+                ☀ / 🌙 夜晚模式
+            </button>
+        </footer>
+    </div>
+
+    <!-- ES6 模組主啟動入口 -->
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>
