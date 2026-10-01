@@ -49,25 +49,43 @@ export class Game {
     }
 
     loadAssets() {
+        // Fallback: If images take too long to load, we just start the game in IDLE state anyway.
+        // Also hiding the loading screen instantly to prevent getting stuck.
+        
+        const startGameIdle = () => {
+            if (this.state === STATE.LOADING) {
+                this.state = STATE.IDLE;
+                if(this.loadingScreen) this.loadingScreen.style.display = 'none';
+                if(this.startScreen) this.startScreen.style.display = 'flex';
+                this._drawIdle();
+            }
+        };
+
+        // We will start idle state after a maximum of 500ms even if not loaded, 
+        // to prevent getting stuck on 'Loading...'
+        setTimeout(startGameIdle, 500);
+
         let loaded = 0;
         const total = 2;
         const checkLoad = () => {
             loaded++;
             if (loaded >= total) {
-                this.state = STATE.IDLE;
-                this.loadingScreen.style.display = 'none';
-                this.startScreen.style.display = 'flex';
-                this._drawIdle();
+                startGameIdle();
             }
         };
 
         this.assets.player.onload = checkLoad;
-        this.assets.player.onerror = checkLoad; // proceed even if error
+        this.assets.player.onerror = checkLoad;
         this.assets.player.src = './assets/images/player.png';
 
         this.assets.bg.onload = checkLoad;
-        this.assets.bg.onerror = checkLoad; // proceed even if error
+        this.assets.bg.onerror = checkLoad;
         this.assets.bg.src = './assets/images/background.png';
+        
+        // Also call startGameIdle just in case they are completely loaded from cache immediately
+        if (this.assets.player.complete && this.assets.bg.complete) {
+            startGameIdle();
+        }
     }
 
     start() {
@@ -106,16 +124,13 @@ export class Game {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
 
-        // Draw background scrolling
         if (this.assets.bg.complete && this.assets.bg.naturalWidth > 0) {
             const bgW = this.assets.bg.width || this.canvas.width;
             const bgH = this.canvas.height;
-            // loop background
             this.ctx.drawImage(this.assets.bg, this.bgX, 0, bgW, bgH);
             this.ctx.drawImage(this.assets.bg, this.bgX + bgW, 0, bgW, bgH);
         }
 
-        // Draw ground line
         this.ctx.strokeStyle = this.isNight ? '#fff' : '#000';
         this.ctx.lineWidth = 2;
         this.ctx.beginPath();
@@ -191,14 +206,13 @@ export class Game {
         this.muteBtn.addEventListener('click', () => {
             const isMuted = this.audioMgr.toggleMute();
             this.muteBtn.textContent = isMuted ? '🔇 音效: 關' : '🔊 音效: 開';
-            // Start BGM if first interaction was mute button
             if(!isMuted && !this.audioMgr.hasStartedBgm && this.state === STATE.PLAYING) {
                 this.audioMgr.startBgm();
             }
         });
 
         document.addEventListener('touchstart', e => {
-            if (e.target.tagName === 'BUTTON') return; // Allow button clicks
+            if (e.target.tagName === 'BUTTON') return;
             e.preventDefault();
             if (this.state === STATE.IDLE || this.state === STATE.GAME_OVER) {
                 this.start();
@@ -227,7 +241,6 @@ export class Game {
             this.player.duck();
         }
         
-        // Mirroring requirement
         if (key === 'ArrowLeft') {
             this.player.facingRight = false;
         }

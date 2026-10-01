@@ -45,7 +45,7 @@ export class Player {
         this.frameTimer++;
         if (this.frameTimer > 8) {
             this.frameTimer = 0;
-            this.currentFrame = (this.currentFrame + 1) % 4; // Assume 4 frames animation
+            this.currentFrame = (this.currentFrame + 1) % 4;
         }
     }
 
@@ -98,26 +98,23 @@ export class Player {
         const x = this.cfg.START_LEFT;
         const y = canvasHeight - this.bottom - h;
         
-        if (!img) {
+        // Prevent drawing incomplete or broken images to avoid Canvas InvalidStateError
+        if (!img || !img.complete || img.naturalWidth === 0) {
             ctx.fillStyle = 'blue';
             ctx.fillRect(x, y, w, h);
             return;
         }
         
-        // Sprite dimensions assumption: 
-        // We divide image height into multiple rows (e.g. idle, run, dead)
-        // Or if it's a simple strip, we just take segments.
-        // As a fallback to work with any image size, we'll slice a segment:
         let frameWidth = img.width / 4;
         let frameHeight = img.height / 3;
         if(frameWidth <= 0) frameWidth = w;
         if(frameHeight <= 0) frameHeight = h;
 
         let row = 0;
-        if (this.isDead) row = 2; // Dead row
-        else if (this.isJumping || !this.isOnGround) row = 1; // Jump row
-        else if (this.isDucking) row = 2; // Duck row
-        else row = 0; // Run/Idle row
+        if (this.isDead) row = 2;
+        else if (this.isJumping || !this.isOnGround) row = 1;
+        else if (this.isDucking) row = 2;
+        else row = 0;
 
         let f = this.currentFrame;
         
@@ -130,10 +127,5 @@ export class Player {
             ctx.drawImage(img, f * frameWidth, row * frameHeight, frameWidth, frameHeight, x, y, w, h);
         }
         ctx.restore();
-        
-        // Debug hitbox
-        // const r = this.getRect();
-        // ctx.strokeStyle = 'red';
-        // ctx.strokeRect(r.left, canvasHeight - r.bottom, r.right - r.left, r.bottom - r.top);
     }
 }
