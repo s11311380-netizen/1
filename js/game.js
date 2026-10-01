@@ -193,7 +193,7 @@ export class Game {
     _updateScoreDisplay() {
         this.scoreEl.textContent     = String(Math.floor(this.score)).padStart(5, '0');
         this.highScoreEl.textContent = String(this.highScore).padStart(5, '0');
-        this.speedTextEl.textContent = ${(this.speed / CONFIG.SPEED.INITIAL).toFixed(1)}x;
+        this.speedTextEl.textContent = " " + (((this.speed / CONFIG.SPEED.INITIAL).toFixed(1))) + "x";
     }
 
     _bindEvents() {
@@ -255,3 +255,4 @@ export class Game {
         }
     }
 }
+
