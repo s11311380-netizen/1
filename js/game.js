@@ -312,36 +312,43 @@ export class Game {
     }
 
     _drawProducerTag(ctx, cW, cH) {
-        const text   = '製作人：11311380/張智媛';
-        const fontSize = 13;
+        const text     = '製作人：11311380/張智媛';
+        const fontSize = 10;  // smaller font
+        const padX     = 6;
+        const padY     = 4;
+        const margin   = 6;   // distance from top-left corner
+        const radius   = 4;
+
         ctx.save();
         ctx.font         = `bold ${fontSize}px "Microsoft JhengHei", "微軟正黑體", Arial, sans-serif`;
-        ctx.textBaseline = 'bottom';
+        ctx.textBaseline = 'top';
 
-        // Background pill
-        const metrics = ctx.measureText(text);
-        const tw = metrics.width;
+        const tw = ctx.measureText(text).width;
         const th = fontSize;
-        const px = 10, py = 8;
-        const rx = 8, ry = 8;
-        const bx = 6, by = cH - py - th - 6;
-        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+
+        // Pill background — top-left
+        const bx = margin;
+        const by = margin;
+        const bw = tw + padX * 2;
+        const bh = th + padY * 2;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.40)';
         ctx.beginPath();
-        ctx.moveTo(bx + rx, by);
-        ctx.lineTo(bx + tw + px * 2 - rx, by);
-        ctx.quadraticCurveTo(bx + tw + px * 2, by, bx + tw + px * 2, by + ry);
-        ctx.lineTo(bx + tw + px * 2, by + th + py - ry);
-        ctx.quadraticCurveTo(bx + tw + px * 2, by + th + py, bx + tw + px * 2 - rx, by + th + py);
-        ctx.lineTo(bx + rx, by + th + py);
-        ctx.quadraticCurveTo(bx, by + th + py, bx, by + th + py - ry);
-        ctx.lineTo(bx, by + ry);
-        ctx.quadraticCurveTo(bx, by, bx + rx, by);
+        ctx.moveTo(bx + radius, by);
+        ctx.lineTo(bx + bw - radius, by);
+        ctx.quadraticCurveTo(bx + bw, by,      bx + bw, by + radius);
+        ctx.lineTo(bx + bw, by + bh - radius);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
+        ctx.lineTo(bx + radius, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh,      bx, by + bh - radius);
+        ctx.lineTo(bx, by + radius);
+        ctx.quadraticCurveTo(bx, by,            bx + radius, by);
         ctx.closePath();
         ctx.fill();
 
-        // Text
+        // Text — gold, top-left
         ctx.fillStyle = '#FFD700';
-        ctx.fillText(text, bx + px, cH - py);
+        ctx.fillText(text, bx + padX, by + padY);
         ctx.restore();
     }
 

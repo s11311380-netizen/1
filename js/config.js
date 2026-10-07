@@ -17,7 +17,7 @@ const CONFIG = {
         SPRITE_SRC_X:      0,
         SPRITE_SRC_Y:      0,
         SPRITE_SRC_W:    190,
-        SPRITE_SRC_H:    160,
+        SPRITE_SRC_H:     95,
     },
 
     SCORE: {
