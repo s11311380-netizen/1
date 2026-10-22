@@ -39,11 +39,11 @@ const CONFIG = {
         {
             id: 'dino3',
             name: '翡翠厚頭龍',
-            description: '重裝衝鋒・6幀剛猛踩踏 🛡️',
+            description: '重裝衝鋒・4幀剛猛衝鋒 🛡️',
             imgSrc: './assets/images/dinosaur3.png',
             frameW: 62,
             frameH: 54,
-            numFrames: 6,
+            numFrames: 4,
             color: '#2ecc71',
         },
         {

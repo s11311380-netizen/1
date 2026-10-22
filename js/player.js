@@ -58,6 +58,7 @@ export class Player {
         this.bottom      = this._baseBottom;
         this.currentFrame = 0;
         this.frameTimer   = 0;
+        this.facingRight  = true; // Always face forward towards obstacles
     }
 
     update() {
@@ -66,7 +67,6 @@ export class Player {
 
         // Advance running animation frame
         this.frameTimer++;
-        // Fast animation speed (every 5-6 game ticks advances 1 running frame)
         if (this.frameTimer >= 5) {
             this.frameTimer   = 0;
             const maxFrames   = this.charDef.numFrames || 6;
@@ -94,8 +94,9 @@ export class Player {
         const w = this.isDucking ? this.cfg.DUCK_WIDTH  : this.cfg.WIDTH;
         const h = this.isDucking ? this.cfg.DUCK_HEIGHT : this.cfg.HEIGHT;
         const x = this.cfg.START_LEFT;
-        // Align feet right onto the ground
-        const y = canvasHeight - this.bottom - h;
+        // Align feet right onto the ground (sink 2px so feet firmly step on the line)
+        const footSink = (this.charDef.id === 'dino1') ? 4 : 2;
+        const y = canvasHeight - this.bottom - h + footSink;
 
         // Retrieve the corresponding sprite image
         const img = imgMap[this.charDef.id];

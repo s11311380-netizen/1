@@ -152,10 +152,10 @@ export class Game {
             card.dataset.idx = idx;
 
             const cvs = document.createElement('canvas');
-            cvs.width  = 105;
-            cvs.height = 70;
+            cvs.width  = 75;
+            cvs.height = 48;
             cvs.style.display = 'block';
-            cvs.style.margin  = '0 auto 6px';
+            cvs.style.margin  = '0 auto 2px';
             this._drawCharPreview(cvs, ch);
 
             const nameEl = document.createElement('div');
