@@ -1,8 +1,8 @@
 import CONFIG from './config.js';
 
 /**
- * Obstacle — image-based tree and flying monster obstacles.
- * Hitbox geometry is fully preserved; drawing uses clean transparent sprites.
+ * Obstacle — Ground trees and floating airborne monsters.
+ * Ground trees have their roots firmly attached to the ground line (no floating!).
  */
 class Obstacle {
     constructor(typeDef, gameWidth, imgMap) {
@@ -13,8 +13,9 @@ class Obstacle {
         this.x        = gameWidth + 20;
         this.imgMap   = imgMap;
 
-        // Oscillation phase for flying obstacles
+        // Floating phase oscillation for airborne obstacles
         this._phase   = Math.random() * Math.PI * 2;
+        this.isDouble = typeDef.isDouble || false;
     }
 
     move(speed) {
@@ -38,50 +39,52 @@ class Obstacle {
     }
 
     draw(ctx, canvasHeight) {
-        const isFlying = this.typeDef.flyingY;
-        const bottom   = isFlying ? this.typeDef.flyingBottom : this.groundY;
-        const flyBob   = isFlying ? Math.sin(this._phase * 1.5) * 4 : 0;
-        const y        = canvasHeight - bottom - this.height + flyBob;
-        const def      = this.typeDef;
+        const isFlying    = this.typeDef.flyingY;
+        const groundLineY = canvasHeight - CONFIG.GROUND_Y;
 
         ctx.save();
 
         if (isFlying) {
-            this._drawFlyingObstacle(ctx, this.x, y, def);
+            // Airborne floating object with smooth oscillation
+            const bottom = this.typeDef.flyingBottom;
+            const flyBob = Math.sin(this._phase * 1.5) * 5;
+            const y      = canvasHeight - bottom - this.height + flyBob;
+            this._drawFlyingObstacle(ctx, this.x, y, this.typeDef);
         } else {
-            this._drawGroundTree(ctx, this.x, y, def);
+            // Ground Tree: Roots firmly planted on the ground line (+2px overlap into dirt)
+            const y = groundLineY - this.height + 2;
+
+            if (this.isDouble) {
+                // Double tree combo hazard
+                const singleW = Math.floor(this.width * 0.55);
+                this._drawTree(ctx, this.x, y, singleW, this.height, 'tree1');
+                this._drawTree(ctx, this.x + singleW - 8, y + 2, singleW, this.height, 'tree2');
+            } else {
+                this._drawTree(ctx, this.x, y, this.width, this.height, this.typeDef.imgKey);
+            }
         }
 
         ctx.restore();
     }
 
-    _drawGroundTree(ctx, x, y, def) {
-        const imgKey = def.imgKey;
-        const img    = this.imgMap[imgKey];
-
+    _drawTree(ctx, x, y, w, h, imgKey) {
+        const img = this.imgMap[imgKey];
         if (img && img.complete && img.naturalWidth > 0) {
-            // Draw clean tree fitted to obstacle dimensions, anchored to the ground
-            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, x, y, this.width, this.height);
+            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, x, y, w, h);
         } else {
             ctx.fillStyle = '#27ae60';
-            ctx.fillRect(x, y, this.width, this.height);
+            ctx.fillRect(x, y, w, h);
         }
     }
 
     _drawFlyingObstacle(ctx, x, y, def) {
-        const img = this.imgMap['flying'];
-
+        const img = this.imgMap[def.imgKey];
         if (img && img.complete && img.naturalWidth > 0) {
-            const frameW   = def.frameW || 14;
-            const frameH   = def.frameH || 16;
-            // Flap wings: toggle frame 0 and frame 1 every few updates
-            const frameIdx = Math.floor(this._phase * 2) % 2;
-            const srcX     = frameIdx * frameW;
-            ctx.drawImage(img, srcX, 0, frameW, frameH, x, y, this.width, this.height);
+            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, x, y, this.width, this.height);
         } else {
-            ctx.fillStyle = '#8e44ad';
+            ctx.fillStyle = '#9b59b6';
             ctx.beginPath();
-            ctx.ellipse(x + this.width/2, y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI*2);
+            ctx.ellipse(x + this.width / 2, y + this.height / 2, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
             ctx.fill();
         }
     }

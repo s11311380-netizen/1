@@ -47,16 +47,23 @@ export class Game {
 
         // Image dictionary for all assets
         this.imgs = {
-            player:   new Image(),
-            char2:    new Image(),
-            char3:    new Image(),
-            char_rex: new Image(),
-            bg:       new Image(),
-            tree1:    new Image(),
-            tree2:    new Image(),
-            tree3:    new Image(),
-            darkTree: new Image(),
-            flying:   new Image(),
+            bg:    new Image(),
+            dino1: new Image(),
+            dino2: new Image(),
+            dino3: new Image(),
+            dino4: new Image(),
+            dino5: new Image(),
+            tree1: new Image(),
+            tree2: new Image(),
+            tree3: new Image(),
+            tree4: new Image(),
+            tree5: new Image(),
+            tree6: new Image(),
+            tree7: new Image(),
+            tree8: new Image(),
+            fly1:  new Image(),
+            fly2:  new Image(),
+            fly3:  new Image(),
         };
 
         this._updateScoreDisplay();
@@ -79,12 +86,19 @@ export class Game {
             resolved = true;
             if (this.state !== STATE.LOADING) return;
 
+            // Pass tree and flying obstacle images to EnemyManager
             this.enemies.setImages({
-                tree1:    this.imgs.tree1,
-                tree2:    this.imgs.tree2,
-                tree3:    this.imgs.tree3,
-                darkTree: this.imgs.darkTree,
-                flying:   this.imgs.flying,
+                tree1: this.imgs.tree1,
+                tree2: this.imgs.tree2,
+                tree3: this.imgs.tree3,
+                tree4: this.imgs.tree4,
+                tree5: this.imgs.tree5,
+                tree6: this.imgs.tree6,
+                tree7: this.imgs.tree7,
+                tree8: this.imgs.tree8,
+                fly1:  this.imgs.fly1,
+                fly2:  this.imgs.fly2,
+                fly3:  this.imgs.fly3,
             });
 
             this.state = STATE.CHAR_SELECT;
@@ -94,20 +108,28 @@ export class Game {
             this._drawScene();
         };
 
+        // Safety fallback timeout
         setTimeout(enterCharSelect, 3000);
 
         const A = CONFIG.ASSETS;
         const srcs = {
-            player:   A.PLAYER_SRC,
-            char2:    A.CHAR2_SRC,
-            char3:    A.CHAR3_SRC,
-            char_rex: A.CHAR_REX_SRC,
-            bg:       A.BG_SRC,
-            tree1:    A.TREE1_SRC,
-            tree2:    A.TREE2_SRC,
-            tree3:    A.TREE3_SRC,
-            darkTree: A.DARK_TREE_SRC,
-            flying:   A.FLYING_SRC,
+            bg:    A.BG_SRC,
+            dino1: A.DINO1_SRC,
+            dino2: A.DINO2_SRC,
+            dino3: A.DINO3_SRC,
+            dino4: A.DINO4_SRC,
+            dino5: A.DINO5_SRC,
+            tree1: A.TREE1_SRC,
+            tree2: A.TREE2_SRC,
+            tree3: A.TREE3_SRC,
+            tree4: A.TREE4_SRC,
+            tree5: A.TREE5_SRC,
+            tree6: A.TREE6_SRC,
+            tree7: A.TREE7_SRC,
+            tree8: A.TREE8_SRC,
+            fly1:  A.FLY1_SRC,
+            fly2:  A.FLY2_SRC,
+            fly3:  A.FLY3_SRC,
         };
 
         for (const [key, src] of Object.entries(srcs)) {
@@ -130,8 +152,8 @@ export class Game {
             card.dataset.idx = idx;
 
             const cvs = document.createElement('canvas');
-            cvs.width  = 100;
-            cvs.height = 75;
+            cvs.width  = 105;
+            cvs.height = 70;
             cvs.style.display = 'block';
             cvs.style.margin  = '0 auto 6px';
             this._drawCharPreview(cvs, ch);
@@ -162,28 +184,23 @@ export class Game {
         const ctx = cvs.getContext('2d');
         ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-        let img = null;
-        switch (charDef.id) {
-            case 'stego':  img = this.imgs.player;   break;
-            case 'raptor': img = this.imgs.char2;    break;
-            case 'bronto': img = this.imgs.char3;    break;
-            case 'rex':    img = this.imgs.char_rex; break;
-        }
+        const img = this.imgs[charDef.id];
 
         if (img && img.complete && img.naturalWidth > 0) {
-            const sw = charDef.isSheet ? charDef.frameW : (charDef.srcW || img.naturalWidth);
-            const sh = charDef.isSheet ? charDef.frameH : (charDef.srcH || img.naturalHeight);
-            const scale = Math.min((cvs.width - 10) / sw, (cvs.height - 10) / sh);
-            const dw = sw * scale;
-            const dh = sh * scale;
-            const dx = (cvs.width  - dw) / 2;
-            const dy = (cvs.height - dh) / 2;
+            const sw    = charDef.frameW;
+            const sh    = charDef.frameH;
+            const scale = Math.min((cvs.width - 12) / sw, (cvs.height - 12) / sh);
+            const dw    = sw * scale;
+            const dh    = sh * scale;
+            const dx    = (cvs.width - dw) / 2;
+            const dy    = (cvs.height - dh) / 2;
 
-            ctx.drawImage(img, charDef.srcX || 0, charDef.srcY || 0, sw, sh, dx, dy, dw, dh);
+            // Draw first frame for preview
+            ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
         } else {
             ctx.fillStyle = charDef.color || '#2ecc71';
             ctx.beginPath();
-            ctx.arc(cvs.width/2, cvs.height/2, 24, 0, Math.PI*2);
+            ctx.arc(cvs.width / 2, cvs.height / 2, 22, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -236,11 +253,13 @@ export class Game {
     _loop() {
         if (this.state !== STATE.PLAYING) return;
 
+        // Progressive speed ramp up
         this.speed = Math.min(this.speed + CONFIG.SPEED.INCREMENT, CONFIG.SPEED.MAX);
 
         this.player.update();
         this.enemies.update(this.speed);
 
+        // Parallax background
         if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
             const scale = this.canvas.height / this.imgs.bg.naturalHeight;
             const bgW   = this.imgs.bg.naturalWidth * scale;
@@ -295,6 +314,7 @@ export class Game {
             ctx.fillRect(0, 0, cW, cH);
         }
 
+        // Draw background
         if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
             const bgNatW = this.imgs.bg.naturalWidth;
             const bgNatH = this.imgs.bg.naturalHeight;
@@ -320,6 +340,7 @@ export class Game {
             ctx.fillRect(0, 0, cW, cH);
         }
 
+        // Ground line
         const groundLineY = cH - CONFIG.GROUND_Y;
         ctx.strokeStyle = this.isNight ? 'rgba(200,200,255,0.6)' : 'rgba(0,0,0,0.5)';
         ctx.lineWidth   = 2;
@@ -328,6 +349,7 @@ export class Game {
         ctx.lineTo(cW, groundLineY);
         ctx.stroke();
 
+        // Ground strip
         const groundGrad = ctx.createLinearGradient(0, groundLineY, 0, cH);
         if (this.isNight) {
             groundGrad.addColorStop(0, '#2d4a1e'); groundGrad.addColorStop(1, '#1a3a0a');
@@ -338,8 +360,14 @@ export class Game {
         ctx.fillRect(0, groundLineY, cW, CONFIG.GROUND_Y);
 
         this._drawParticles(ctx);
+
+        // Ground trees and airborne monsters
         this.enemies.draw(ctx, cH);
+
+        // Player with running animation
         this.player.draw(ctx, this.imgs, cH);
+
+        // Producer tag (top-left)
         this._drawProducerTag(ctx, cW, cH);
     }
 
