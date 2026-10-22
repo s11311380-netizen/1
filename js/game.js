@@ -4,43 +4,27 @@ import { Player }       from './player.js';
 import { EnemyManager } from './enemy.js';
 
 const STATE = {
-    LOADING:   'LOADING',
-    IDLE:      'IDLE',
-    PLAYING:   'PLAYING',
-    GAME_OVER: 'GAME_OVER',
+    LOADING:    'LOADING',
+    CHAR_SELECT:'CHAR_SELECT',   // NEW: character selection screen
+    IDLE:       'IDLE',
+    PLAYING:    'PLAYING',
+    GAME_OVER:  'GAME_OVER',
 };
 
-/**
- * Game — orchestrates asset loading, game loop, rendering, and UI.
- *
- * Asset loading:
- *   Preloads player.png and background.png; starts idle state only after
- *   both resolve (or after 3 s safety timeout to avoid indefinite stuck screen).
- *
- * BGM autoplay:
- *   BGM is only started after the FIRST user interaction (keydown / touchstart /
- *   click on canvas) to comply with the browser Autoplay Policy.
- *
- * Producer credit:
- *   "製作人：11311380/張智媛" is rendered directly onto the canvas (bottom-left),
- *   always visible in-game, not just in the HTML layer.
- *
- * Mute buttons:
- *   Two buttons in the top-right corner: 🎵 (music) and 🔊 (SFX).
- */
 export class Game {
     constructor() {
         // ── DOM refs ──────────────────────────────────────────────────────────
-        this.startScreen  = document.getElementById('startScreen');
-        this.gameOverEl   = document.getElementById('gameOver');
-        this.scoreEl      = document.getElementById('score');
-        this.highScoreEl  = document.getElementById('highScore');
-        this.finalScoreEl = document.getElementById('finalScore');
-        this.speedTextEl  = document.getElementById('speedText');
-        this.restartBtn   = document.getElementById('restartBtn');
-        this.nightModeBtn = document.getElementById('nightModeBtn');
-        this.musicBtn     = document.getElementById('musicBtn');
-        this.sfxBtn       = document.getElementById('sfxBtn');
+        this.startScreen   = document.getElementById('startScreen');
+        this.gameOverEl    = document.getElementById('gameOver');
+        this.charSelectEl  = document.getElementById('charSelectScreen');
+        this.scoreEl       = document.getElementById('score');
+        this.highScoreEl   = document.getElementById('highScore');
+        this.finalScoreEl  = document.getElementById('finalScore');
+        this.speedTextEl   = document.getElementById('speedText');
+        this.restartBtn    = document.getElementById('restartBtn');
+        this.nightModeBtn  = document.getElementById('nightModeBtn');
+        this.musicBtn      = document.getElementById('musicBtn');
+        this.sfxBtn        = document.getElementById('sfxBtn');
         this.loadingScreen = document.getElementById('loadingScreen');
 
         this.canvas = document.getElementById('gameCanvas');
@@ -52,29 +36,33 @@ export class Game {
         this.enemies  = new EnemyManager(CONFIG.GAME_WIDTH);
 
         // ── Game state ────────────────────────────────────────────────────────
-        this.state      = STATE.LOADING;
-        this.score      = 0;
-        this.highScore  = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
-        this.speed      = CONFIG.SPEED.INITIAL;
-        this.isNight    = false;
-        this.rafId      = null;
-
-        // Scroll state for parallax background
-        this.bgX = 0;
-
-        // Score-milestone tracking (every 100 pts plays a chime)
+        this.state         = STATE.LOADING;
+        this.score         = 0;
+        this.highScore     = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
+        this.speed         = CONFIG.SPEED.INITIAL;
+        this.isNight       = false;
+        this.rafId         = null;
+        this.bgX           = 0;
         this._lastMilestone = 0;
+        this._particles     = [];
+
+        // Selected character index (default 0)
+        this._selectedCharIdx = 0;
 
         // ── Image assets ──────────────────────────────────────────────────────
-        this.assets = {
-            player: new Image(),
-            bg:     new Image(),
+        this.imgs = {
+            player:   new Image(),
+            char2:    new Image(),
+            char3:    new Image(),
+            bg:       new Image(),
+            tree1:    new Image(),
+            tree2:    new Image(),
+            darkTree: new Image(),
+            flying:   new Image(),
         };
 
-        // ── Ground particle system (visual polish) ────────────────────────────
-        this._particles = [];
-
         this._updateScoreDisplay();
+        this._buildCharSelectUI();
         this._bindEvents();
         this._loadAssets();
     }
@@ -82,54 +70,168 @@ export class Game {
     // ── Asset preloading ──────────────────────────────────────────────────────
 
     _loadAssets() {
-        let loaded  = 0;
-        const total = 2;
-        let timedOut = false;
+        const total    = Object.keys(this.imgs).length;
+        let   loaded   = 0;
+        let   resolved = false;
 
         const proceed = () => {
-            if (timedOut) return; // already handled by timeout
             loaded++;
-            if (loaded >= total) enterIdle();
+            if (loaded >= total && !resolved) enterCharSelect();
         };
-
-        const enterIdle = () => {
-            timedOut = true; // prevent double-call
+        const enterCharSelect = () => {
+            if (resolved) return;
+            resolved = true;
             if (this.state !== STATE.LOADING) return;
-            this.state = STATE.IDLE;
+
+            // Pass obstacle images to EnemyManager
+            this.enemies.setImages({
+                tree1:    this.imgs.tree1,
+                tree2:    this.imgs.tree2,
+                darkTree: this.imgs.darkTree,
+                flying:   this.imgs.flying,
+            });
+
+            this.state = STATE.CHAR_SELECT;
             if (this.loadingScreen) this.loadingScreen.style.display = 'none';
-            if (this.startScreen)   this.startScreen.style.display   = 'flex';
-            this._drawIdle();
+            if (this.charSelectEl)  this.charSelectEl.style.display  = 'flex';
+            this._renderCharSelectCards();
+            // Draw idle background behind the overlay
+            this._drawScene();
         };
 
-        // Safety timeout: never stay on loading screen beyond 3 s
-        setTimeout(enterIdle, 3000);
+        // Safety timeout
+        setTimeout(enterCharSelect, 4000);
 
-        this.assets.player.onload  = proceed;
-        this.assets.player.onerror = () => { console.warn('[Game] player.png failed to load'); proceed(); };
-        this.assets.player.src     = './assets/images/player.png';
+        const A = CONFIG.ASSETS;
+        const srcs = {
+            player:   A.PLAYER_SRC,
+            char2:    A.CHAR2_SRC,
+            char3:    A.CHAR3_SRC,
+            bg:       A.BG_SRC,
+            tree1:    A.TREE1_SRC,
+            tree2:    A.TREE2_SRC,
+            darkTree: A.DARK_TREE_SRC,
+            flying:   A.FLYING_SRC,
+        };
 
-        this.assets.bg.onload  = proceed;
-        this.assets.bg.onerror = () => { console.warn('[Game] background.png failed to load'); proceed(); };
-        this.assets.bg.src     = './assets/images/background.png';
-
-        // If both already cached (page reload), fire immediately
-        if (this.assets.player.complete && this.assets.bg.complete) {
-            enterIdle();
+        for (const [key, src] of Object.entries(srcs)) {
+            this.imgs[key].onload  = proceed;
+            this.imgs[key].onerror = () => { console.warn(`[Game] ${src} failed to load`); proceed(); };
+            this.imgs[key].src     = src;
         }
+
+        // All cached already
+        if (Object.values(this.imgs).every(i => i.complete)) enterCharSelect();
+    }
+
+    // ── Character select ──────────────────────────────────────────────────────
+
+    _buildCharSelectUI() {
+        if (!this.charSelectEl) return;
+        // Cards are generated dynamically
+    }
+
+    _renderCharSelectCards() {
+        const container = document.getElementById('charCardsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        CONFIG.CHARACTERS.forEach((ch, idx) => {
+            const card = document.createElement('div');
+            card.className = 'char-card' + (idx === this._selectedCharIdx ? ' selected' : '');
+            card.dataset.idx = idx;
+
+            // Mini canvas preview
+            const cvs = document.createElement('canvas');
+            cvs.width  = 100;
+            cvs.height = 80;
+            cvs.style.display = 'block';
+            cvs.style.margin  = '0 auto 8px';
+            this._drawCharPreview(cvs, ch);
+
+            const nameEl = document.createElement('div');
+            nameEl.className   = 'char-name';
+            nameEl.textContent = ch.name;
+
+            const descEl = document.createElement('div');
+            descEl.className   = 'char-desc';
+            descEl.textContent = ch.description;
+
+            card.appendChild(cvs);
+            card.appendChild(nameEl);
+            card.appendChild(descEl);
+
+            card.addEventListener('click', () => {
+                this._selectedCharIdx = idx;
+                document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            });
+
+            container.appendChild(card);
+        });
+    }
+
+    _drawCharPreview(cvs, charDef) {
+        const ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+        let img = null;
+        switch (charDef.id) {
+            case 'stego':  img = this.imgs.player; break;
+            case 'raptor': img = this.imgs.char2;  break;
+            case 'bronto': img = this.imgs.char3;  break;
+        }
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            const sw = charDef.isSheet ? charDef.frameW : (charDef.srcW || img.naturalWidth);
+            const sh = charDef.isSheet ? charDef.frameH : (charDef.srcH || img.naturalHeight);
+            const scale = Math.min(cvs.width / sw, cvs.height / sh) * 0.85;
+            const dw = sw * scale;
+            const dh = sh * scale;
+            const dx = (cvs.width  - dw) / 2;
+            const dy = (cvs.height - dh) / 2;
+
+            if (charDef.whiteBackground) {
+                ctx.fillStyle = '#e8f4fc';
+                ctx.fillRect(0, 0, cvs.width, cvs.height);
+                ctx.globalCompositeOperation = 'multiply';
+            }
+            ctx.drawImage(img, charDef.srcX || 0, charDef.srcY || 0, sw, sh, dx, dy, dw, dh);
+            ctx.globalCompositeOperation = 'source-over';
+        } else {
+            // Placeholder circle
+            ctx.fillStyle = charDef.color || '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(cvs.width/2, cvs.height/2, 28, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    // ── Confirm character selection and enter IDLE ────────────────────────────
+
+    _confirmCharSelect() {
+        const charDef = CONFIG.CHARACTERS[this._selectedCharIdx];
+        this.player.charDef = charDef;
+
+        if (this.charSelectEl) this.charSelectEl.style.display = 'none';
+        if (this.startScreen)  this.startScreen.style.display  = 'flex';
+
+        this.state = STATE.IDLE;
+        this._drawIdle();
     }
 
     // ── Game lifecycle ────────────────────────────────────────────────────────
 
     start() {
         if (this.state === STATE.PLAYING || this.state === STATE.LOADING) return;
+        if (this.state === STATE.CHAR_SELECT) return; // must confirm first
 
-        // User clicked/pressed — unlock audio
         this.audioMgr.onUserInteraction();
         this.audioMgr.startBgm();
 
-        this.state  = STATE.PLAYING;
-        this.score  = 0;
-        this.speed  = CONFIG.SPEED.INITIAL;
+        this.state          = STATE.PLAYING;
+        this.score          = 0;
+        this.speed          = CONFIG.SPEED.INITIAL;
         this._lastMilestone = 0;
         this._particles     = [];
 
@@ -159,45 +261,31 @@ export class Game {
     _loop() {
         if (this.state !== STATE.PLAYING) return;
 
-        // Speed ramp-up
         this.speed = Math.min(this.speed + CONFIG.SPEED.INCREMENT, CONFIG.SPEED.MAX);
 
-        // Update entities
         this.player.update();
         this.enemies.update(this.speed);
 
-        // Scroll background (parallax at 50% speed)
-        // Use scaled width (same scale as _drawScene) to ensure seamless wrap
-        if (this.assets.bg.complete && this.assets.bg.naturalWidth > 0) {
-            const scale = this.canvas.height / this.assets.bg.naturalHeight;
-            const bgW   = this.assets.bg.naturalWidth * scale;
-            this.bgX -= this.speed * 0.5;
+        // Scroll bg
+        if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
+            const scale = this.canvas.height / this.imgs.bg.naturalHeight;
+            const bgW   = this.imgs.bg.naturalWidth * scale;
+            this.bgX   -= this.speed * 0.5;
             if (this.bgX <= -bgW) this.bgX = 0;
         }
 
-        // Update particles
         this._updateParticles();
 
-        // Collision check
         if (this.enemies.checkCollision(this.player.getRect())) {
             this._endGame();
             return;
         }
 
-        // Score
         this.score += CONFIG.SCORE.INCREMENT_PER_FRAME;
         this._checkScoreMilestone();
         this._updateScoreDisplay();
 
-        // Night mode auto-toggle
-        if (!this.isNight && Math.floor(this.score) >= CONFIG.NIGHT_SCORE_THRESHOLD &&
-            Math.floor(this.score) % CONFIG.NIGHT_SCORE_THRESHOLD === 0) {
-            // toggle every N points (just visual, no gameplay change)
-        }
-
-        // Draw
         this._drawScene();
-
         this.rafId = requestAnimationFrame(() => this._loop());
     }
 
@@ -218,7 +306,6 @@ export class Game {
 
         this.finalScoreEl.textContent = String(Math.floor(this.score)).padStart(5, '0');
         this._updateScoreDisplay();
-
         this.gameOverEl.style.display = 'flex';
     }
 
@@ -237,100 +324,77 @@ export class Game {
             ctx.fillRect(0, 0, cW, cH);
         }
 
-        // ── Background image (parallax scroll) ──────────────────────────────
-        if (this.assets.bg.complete && this.assets.bg.naturalWidth > 0) {
-            const bgNatW = this.assets.bg.naturalWidth;
-            const bgNatH = this.assets.bg.naturalHeight;
-            // Scale to fill canvas height, keep aspect
+        // Background parallax
+        if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
+            const bgNatW = this.imgs.bg.naturalWidth;
+            const bgNatH = this.imgs.bg.naturalHeight;
             const scale  = cH / bgNatH;
             const bgW    = bgNatW * scale;
             const bgH    = cH;
 
-            // Apply night darkening filter via globalAlpha overlay instead of
-            // manipulating pixel data (fast, no extra canvas needed)
-            if (this.isNight) {
-                ctx.globalAlpha = 0.4;
-            }
-            ctx.drawImage(this.assets.bg, this.bgX,       0, bgW, bgH);
-            ctx.drawImage(this.assets.bg, this.bgX + bgW, 0, bgW, bgH);
-            // Third copy handles edge case when bgW < cW
-            if (this.bgX + bgW * 2 < cW) {
-                ctx.drawImage(this.assets.bg, this.bgX + bgW * 2, 0, bgW, bgH);
-            }
+            if (this.isNight) ctx.globalAlpha = 0.4;
+            ctx.drawImage(this.imgs.bg, this.bgX,       0, bgW, bgH);
+            ctx.drawImage(this.imgs.bg, this.bgX + bgW, 0, bgW, bgH);
+            if (this.bgX + bgW * 2 < cW)
+                ctx.drawImage(this.imgs.bg, this.bgX + bgW * 2, 0, bgW, bgH);
             ctx.globalAlpha = 1.0;
-
-            // Correct bgX reference to scaled width for seamless loop
-            if (this.bgX <= -bgW) this.bgX = 0;
         } else {
-            // Fallback gradient sky when image not available
             const grad = ctx.createLinearGradient(0, 0, 0, cH);
             if (this.isNight) {
-                grad.addColorStop(0, '#0a0a2e');
-                grad.addColorStop(1, '#1a3a0a');
+                grad.addColorStop(0, '#0a0a2e'); grad.addColorStop(1, '#1a3a0a');
             } else {
-                grad.addColorStop(0, '#87CEEB');
-                grad.addColorStop(0.6, '#b0e0f5');
-                grad.addColorStop(0.6, '#c8f0a0');
-                grad.addColorStop(1, '#90EE90');
+                grad.addColorStop(0, '#87CEEB'); grad.addColorStop(0.6, '#b0e0f5');
+                grad.addColorStop(0.6, '#c8f0a0'); grad.addColorStop(1, '#90EE90');
             }
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, cW, cH);
         }
 
-        // ── Ground line ──────────────────────────────────────────────────────
+        // Ground line
         const groundLineY = cH - CONFIG.GROUND_Y;
         ctx.strokeStyle = this.isNight ? 'rgba(200,200,255,0.6)' : 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth   = 2;
         ctx.beginPath();
         ctx.moveTo(0, groundLineY);
         ctx.lineTo(cW, groundLineY);
         ctx.stroke();
 
-        // Ground fill strip (dirt/grass texture)
+        // Ground strip
         const groundGrad = ctx.createLinearGradient(0, groundLineY, 0, cH);
         if (this.isNight) {
-            groundGrad.addColorStop(0, '#2d4a1e');
-            groundGrad.addColorStop(1, '#1a3a0a');
+            groundGrad.addColorStop(0, '#2d4a1e'); groundGrad.addColorStop(1, '#1a3a0a');
         } else {
-            groundGrad.addColorStop(0, '#8B6914');
-            groundGrad.addColorStop(1, '#5a3e08');
+            groundGrad.addColorStop(0, '#8B6914'); groundGrad.addColorStop(1, '#5a3e08');
         }
         ctx.fillStyle = groundGrad;
         ctx.fillRect(0, groundLineY, cW, CONFIG.GROUND_Y);
 
-        // ── Particles ────────────────────────────────────────────────────────
+        // Particles
         this._drawParticles(ctx);
 
-        // ── Enemies ──────────────────────────────────────────────────────────
+        // Enemies
         this.enemies.draw(ctx, cH);
 
-        // ── Player ───────────────────────────────────────────────────────────
-        this.player.draw(ctx, this.assets.player, cH);
+        // Player
+        this.player.draw(ctx, this.imgs, cH);
 
-        // ── Producer credit (always visible, bottom-left of canvas) ──────────
+        // Producer tag (top-left)
         this._drawProducerTag(ctx, cW, cH);
     }
 
     _drawProducerTag(ctx, cW, cH) {
         const text     = '製作人：11311380/張智媛';
-        const fontSize = 10;  // smaller font
-        const padX     = 6;
-        const padY     = 4;
-        const margin   = 6;   // distance from top-left corner
-        const radius   = 4;
+        const fontSize = 10;
+        const padX = 6, padY = 4, margin = 6, radius = 4;
 
         ctx.save();
         ctx.font         = `bold ${fontSize}px "Microsoft JhengHei", "微軟正黑體", Arial, sans-serif`;
         ctx.textBaseline = 'top';
 
         const tw = ctx.measureText(text).width;
-        const th = fontSize;
-
-        // Pill background — top-left
-        const bx = margin;
-        const by = margin;
         const bw = tw + padX * 2;
-        const bh = th + padY * 2;
+        const bh = fontSize + padY * 2;
+        const bx = margin, by = margin;
 
         ctx.fillStyle = 'rgba(0,0,0,0.40)';
         ctx.beginPath();
@@ -346,7 +410,6 @@ export class Game {
         ctx.closePath();
         ctx.fill();
 
-        // Text — gold, top-left
         ctx.fillStyle = '#FFD700';
         ctx.fillText(text, bx + padX, by + padY);
         ctx.restore();
@@ -371,15 +434,11 @@ export class Game {
     }
 
     _updateParticles() {
-        // Spawn dust particles while running
-        if (this.player.isOnGround && !this.player.isDead) {
-            if (Math.random() < 0.4) this._spawnRunParticles();
-        }
+        if (this.player.isOnGround && !this.player.isDead && Math.random() < 0.4)
+            this._spawnRunParticles();
+
         this._particles = this._particles.filter(p => {
-            p.x  += p.vx;
-            p.y  += p.vy;
-            p.vy += 0.1; // gravity
-            p.life -= 0.06;
+            p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.06;
             return p.life > 0;
         });
     }
@@ -396,12 +455,10 @@ export class Game {
         }
     }
 
-    // ── Score milestone SFX ───────────────────────────────────────────────────
-
     _checkScoreMilestone() {
-        const milestone = Math.floor(this.score / 100) * 100;
-        if (milestone > 0 && milestone !== this._lastMilestone) {
-            this._lastMilestone = milestone;
+        const m = Math.floor(this.score / 100) * 100;
+        if (m > 0 && m !== this._lastMilestone) {
+            this._lastMilestone = m;
             this.audioMgr.playScore();
         }
     }
@@ -414,46 +471,43 @@ export class Game {
         this.speedTextEl.textContent = ' ' + (this.speed / CONFIG.SPEED.INITIAL).toFixed(1) + 'x';
     }
 
-    // ── Event binding ─────────────────────────────────────────────────────────
+    // ── Events ────────────────────────────────────────────────────────────────
 
     _bindEvents() {
-        // Keyboard
         document.addEventListener('keydown', e => this._onKeyDown(e));
         document.addEventListener('keyup',   e => this._onKeyUp(e));
 
-        // Restart button
-        this.restartBtn.addEventListener('click', () => {
+        this.restartBtn?.addEventListener('click', () => {
             this.audioMgr.onUserInteraction();
-            this.start();
+            // Go back to char select on game over restart
+            this._goToCharSelect();
         });
 
-        // Night mode toggle
-        this.nightModeBtn.addEventListener('click', () => this.toggleNight());
+        this.nightModeBtn?.addEventListener('click', () => this.toggleNight());
 
-        // Music mute button
-        if (this.musicBtn) {
-            this.musicBtn.addEventListener('click', () => {
-                this.audioMgr.onUserInteraction();
-                const muted = this.audioMgr.toggleMusicMute();
-                this.musicBtn.textContent = muted ? '🎵 音樂: 關' : '🎵 音樂: 開';
-                this.musicBtn.classList.toggle('muted', muted);
-                if (!muted && this.state === STATE.PLAYING) this.audioMgr.startBgm();
-            });
-        }
+        this.musicBtn?.addEventListener('click', () => {
+            this.audioMgr.onUserInteraction();
+            const muted = this.audioMgr.toggleMusicMute();
+            this.musicBtn.textContent = muted ? '🎵 音樂: 關' : '🎵 音樂: 開';
+            this.musicBtn.classList.toggle('muted', muted);
+            if (!muted && this.state === STATE.PLAYING) this.audioMgr.startBgm();
+        });
 
-        // SFX mute button
-        if (this.sfxBtn) {
-            this.sfxBtn.addEventListener('click', () => {
-                this.audioMgr.onUserInteraction();
-                const muted = this.audioMgr.toggleSfxMute();
-                this.sfxBtn.textContent = muted ? '🔊 音效: 關' : '🔊 音效: 開';
-                this.sfxBtn.classList.toggle('muted', muted);
-            });
-        }
+        this.sfxBtn?.addEventListener('click', () => {
+            this.audioMgr.onUserInteraction();
+            const muted = this.audioMgr.toggleSfxMute();
+            this.sfxBtn.textContent = muted ? '🔊 音效: 關' : '🔊 音效: 開';
+            this.sfxBtn.classList.toggle('muted', muted);
+        });
 
-        // Touch (mobile)
+        // Confirm character selection button
+        document.getElementById('confirmCharBtn')?.addEventListener('click', () => {
+            this.audioMgr.onUserInteraction();
+            this._confirmCharSelect();
+        });
+
         document.addEventListener('touchstart', e => {
-            if (e.target.tagName === 'BUTTON') return;
+            if (e.target.tagName === 'BUTTON' || e.target.closest('.char-card') || e.target.closest('#charSelectScreen')) return;
             e.preventDefault();
             this.audioMgr.onUserInteraction();
             if (this.state === STATE.IDLE || this.state === STATE.GAME_OVER) {
@@ -464,29 +518,49 @@ export class Game {
         }, { passive: false });
     }
 
+    _goToCharSelect() {
+        this.audioMgr.stopBgm();
+        this.audioMgr.hasStartedBgm = false;
+        this.state = STATE.CHAR_SELECT;
+        this.gameOverEl.style.display  = 'none';
+        this.startScreen.style.display = 'none';
+        if (this.charSelectEl) this.charSelectEl.style.display = 'flex';
+        this._renderCharSelectCards();
+        this._drawScene();
+    }
+
     _onKeyDown(e) {
         const key = e.code;
-
-        // Unlock audio on first keypress
         this.audioMgr.onUserInteraction();
 
-        // Start / restart
-        if ((key === 'Space' || key === 'ArrowUp') &&
-            (this.state === STATE.IDLE || this.state === STATE.GAME_OVER)) {
+        // Confirm char select with Enter
+        if (key === 'Enter' && this.state === STATE.CHAR_SELECT) {
+            this._confirmCharSelect();
+            return;
+        }
+        // Arrow keys to cycle characters in char select
+        if (this.state === STATE.CHAR_SELECT) {
+            if (key === 'ArrowLeft') {
+                this._selectedCharIdx = (this._selectedCharIdx - 1 + CONFIG.CHARACTERS.length) % CONFIG.CHARACTERS.length;
+                this._renderCharSelectCards();
+            }
+            if (key === 'ArrowRight') {
+                this._selectedCharIdx = (this._selectedCharIdx + 1) % CONFIG.CHARACTERS.length;
+                this._renderCharSelectCards();
+            }
+            return;
+        }
+
+        if ((key === 'Space' || key === 'ArrowUp') && (this.state === STATE.IDLE || this.state === STATE.GAME_OVER)) {
+            if (this.state === STATE.GAME_OVER) { this._goToCharSelect(); return; }
             this.start();
             return;
         }
 
         if (this.state !== STATE.PLAYING) return;
 
-        if (key === 'Space' || key === 'ArrowUp') {
-            e.preventDefault();
-            this.player.jump(this.audioMgr);
-        }
-        if (key === 'ArrowDown') {
-            e.preventDefault();
-            this.player.duck();
-        }
+        if (key === 'Space' || key === 'ArrowUp') { e.preventDefault(); this.player.jump(this.audioMgr); }
+        if (key === 'ArrowDown')  { e.preventDefault(); this.player.duck(); }
         if (key === 'ArrowLeft')  this.player.facingRight = false;
         if (key === 'ArrowRight') this.player.facingRight = true;
     }

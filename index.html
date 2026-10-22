@@ -3,34 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DINO RUN - Canvas Upgrade</title>
+    <title>DINO RUN - 角色選擇版</title>
     <link rel="stylesheet" href="./css/style.css">
     <style>
-        /* ── Game container ─────────────────────────────────────────── */
+        /* ── Game container ─────────────────────────────────────── */
         #game {
             position: relative;
             overflow: hidden;
             background: #87CEEB;
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
+        canvas { display: block; width: 100%; height: 100%; }
 
-        /* ── Top-right mute buttons ──────────────────────────────────── */
+        /* ── Top-right audio buttons ─────────────────────────────── */
         #btnBar {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 10px; right: 10px;
             z-index: 100;
-            display: flex;
-            gap: 6px;
+            display: flex; gap: 6px;
         }
         #btnBar button {
             cursor: pointer;
             padding: 4px 10px;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0,0,0,0.5);
             color: #fff;
             border: 1px solid rgba(255,255,255,0.3);
             border-radius: 6px;
@@ -39,41 +33,102 @@
             transition: background 0.2s;
             white-space: nowrap;
         }
-        #btnBar button:hover  { background: rgba(0,0,0,0.7); }
-        #btnBar button.muted  { background: rgba(180,0,0,0.55); }
+        #btnBar button:hover { background: rgba(0,0,0,0.7); }
+        #btnBar button.muted { background: rgba(180,0,0,0.55); }
 
-        /* ── Loading screen ──────────────────────────────────────────── */
+        /* ── Loading screen ──────────────────────────────────────── */
         #loadingScreen {
-            position: absolute;
-            inset: 0;
-            background: #222;
+            position: absolute; inset: 0;
+            background: #1a1a2e;
             color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 200; gap: 14px;
             font-size: 22px;
             font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
-            gap: 14px;
         }
         .loading-bar-wrap {
-            width: 200px;
-            height: 8px;
+            width: 200px; height: 8px;
             background: rgba(255,255,255,0.15);
-            border-radius: 4px;
-            overflow: hidden;
+            border-radius: 4px; overflow: hidden;
         }
         .loading-bar-fill {
-            height: 100%;
-            width: 60%;
-            background: #4fc3f7;
-            border-radius: 4px;
+            height: 100%; width: 60%;
+            background: #4fc3f7; border-radius: 4px;
             animation: loadPulse 1.2s ease-in-out infinite alternate;
         }
-        @keyframes loadPulse {
-            from { width: 30%; }
-            to   { width: 90%; }
+        @keyframes loadPulse { from { width: 30%; } to { width: 90%; } }
+
+        /* ── Character Select Screen ─────────────────────────────── */
+        #charSelectScreen {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.78);
+            backdrop-filter: blur(4px);
+            display: none;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 150;
+            gap: 16px;
+            color: #fff;
+            font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+        }
+        #charSelectScreen h2 {
+            font-size: 26px;
+            color: #4fc3f7;
+            text-shadow: 0 0 14px rgba(79,195,247,0.8);
+            margin: 0;
+        }
+        #charSelectScreen .hint {
+            font-size: 12px;
+            color: #90a4ae;
+            margin: -8px 0 0;
+        }
+        #charCardsContainer {
+            display: flex; gap: 16px;
+            align-items: stretch;
+        }
+        .char-card {
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 12px 14px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 100px;
+            transition: border-color 0.2s, background 0.2s, transform 0.15s;
+        }
+        .char-card:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-3px);
+        }
+        .char-card.selected {
+            border-color: #4fc3f7;
+            background: rgba(79,195,247,0.18);
+            box-shadow: 0 0 16px rgba(79,195,247,0.4);
+            transform: translateY(-4px);
+        }
+        .char-name {
+            font-size: 14px; font-weight: bold;
+            color: #e0f7fa; margin-top: 4px;
+        }
+        .char-desc {
+            font-size: 11px; color: #90caf9; margin-top: 2px;
+        }
+        #confirmCharBtn {
+            background: linear-gradient(135deg, #4fc3f7, #0288d1);
+            color: #fff; border: none;
+            padding: 10px 32px;
+            font-size: 16px; border-radius: 24px;
+            cursor: pointer;
+            font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        #confirmCharBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 18px rgba(79,195,247,0.5);
+        }
+        .key-hint {
+            font-size: 11px; color: #78909c;
         }
     </style>
 </head>
@@ -95,22 +150,32 @@
         </header>
 
         <main id="game" style="width: 900px; height: 300px;">
-            <!-- Loading screen -->
+
+            <!-- Loading -->
             <div id="loadingScreen">
                 <span>載入資源中…</span>
                 <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
             </div>
 
-            <!-- Top-right audio control buttons -->
+            <!-- Character Select -->
+            <section id="charSelectScreen">
+                <h2>🦕 選擇你的角色</h2>
+                <p class="hint">← → 鍵切換 ／ Enter 確認</p>
+                <div id="charCardsContainer"></div>
+                <button id="confirmCharBtn">✅ 確認出發！</button>
+                <p class="key-hint">點擊卡片選擇角色，按下確認後開始遊戲</p>
+            </section>
+
+            <!-- Top-right audio controls -->
             <div id="btnBar">
                 <button id="musicBtn">🎵 音樂: 開</button>
                 <button id="sfxBtn">🔊 音效: 開</button>
             </div>
 
-            <!-- Game canvas -->
+            <!-- Canvas -->
             <canvas id="gameCanvas" width="900" height="300"></canvas>
 
-            <!-- Start screen (hidden until assets loaded) -->
+            <!-- Start screen -->
             <section id="startScreen" style="display:none;">
                 <div class="start-content">
                     <h2>🦕 DINO RUN</h2>
@@ -119,33 +184,24 @@
                 </div>
             </section>
 
-            <!-- Game over screen -->
+            <!-- Game Over -->
             <section id="gameOver" style="display:none;">
                 <h2>GAME OVER</h2>
                 <p>分數：<span id="finalScore">00000</span></p>
-                <button id="restartBtn">🔄 重新開始</button>
-                <p style="margin-top: 15px; font-size: 16px;">⬆ SPACE 也可以重新開始</p>
+                <button id="restartBtn">🔄 重新選擇角色</button>
+                <p style="margin-top:12px; font-size:14px;">⬆ SPACE 也可以返回選角</p>
             </section>
+
         </main>
 
         <footer class="controls">
-            <div>
-                <span class="key">⬆</span>
-                <span class="key">SPACE</span>
-                跳躍
-            </div>
-            <div>
-                <span class="key">⬇</span>
-                 趴下
-            </div>
-            <div>
-                速度：<span id="speedText">1.0x</span>
-            </div>
-            <button class="mode-btn" id="nightModeBtn">
-                ☀ / 🌙 夜間模式
-            </button>
+            <div><span class="key">⬆</span><span class="key">SPACE</span> 跳躍</div>
+            <div><span class="key">⬇</span> 趴下</div>
+            <div>速度：<span id="speedText">1.0x</span></div>
+            <button class="mode-btn" id="nightModeBtn">☀ / 🌙 夜間模式</button>
         </footer>
     </div>
-    <script type="module" src="./js/main.js?v=4"></script>
+
+    <script type="module" src="./js/main.js?v=5"></script>
 </body>
 </html>

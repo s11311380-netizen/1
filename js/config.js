@@ -1,7 +1,7 @@
 const CONFIG = {
     GAME_WIDTH:  900,
     GAME_HEIGHT: 300,
-    GROUND_Y:    20, // Ground offset from bottom
+    GROUND_Y:    20,  // Ground offset from bottom
 
     PLAYER: {
         START_LEFT:    80,
@@ -12,13 +12,45 @@ const CONFIG = {
         JUMP_FORCE:   -18,
         GRAVITY:        1.0,
         MAX_FALL:      20,
-        // Sprite sheet layout: single dino image (190x195), we simulate frames via canvas
-        // The big dino occupies roughly top 160px of 195px height, full width 190px
-        SPRITE_SRC_X:      0,
-        SPRITE_SRC_Y:      0,
-        SPRITE_SRC_W:    190,
-        SPRITE_SRC_H:     95,
     },
+
+    // Character definitions for the selection screen
+    CHARACTERS: [
+        {
+            id: 'stego',
+            name: '劍龍',
+            description: '平衡型',
+            imgSrc: './assets/images/player.png',
+            // single image (190×95), no sheet — animated via canvas transforms
+            isSheet: false,
+            srcX: 0, srcY: 0, srcW: 190, srcH: 95,
+            // tint colour shown in selection card
+            color: '#2ecc71',
+        },
+        {
+            id: 'raptor',
+            name: '迅猛龍',
+            description: '速度型 🔥',
+            imgSrc: './assets/images/char2.png',
+            // sprite sheet: 6 walk frames × 74px wide, 50px tall (white bg, use globalCompositeOperation)
+            isSheet: true,
+            frameW: 74, frameH: 50, numFrames: 6,
+            srcX: 0, srcY: 0, srcW: 444, srcH: 50,
+            // white bg → handled in player draw with ctx trick
+            whiteBackground: true,
+            color: '#5dade2',
+        },
+        {
+            id: 'bronto',
+            name: '腕龍',
+            description: '重型防守',
+            imgSrc: './assets/images/char3.png',
+            isSheet: false,
+            srcX: 0, srcY: 0, srcW: 210, srcH: 195,
+            purpleBackground: true,  // purple bg removed via globalCompositeOperation
+            color: '#8e44ad',
+        },
+    ],
 
     SCORE: {
         INCREMENT_PER_FRAME: 0.1,
@@ -27,19 +59,32 @@ const CONFIG = {
 
     SPEED: {
         INITIAL:      4,
-        MAX:         14,
-        INCREMENT:    0.002,
+        MAX:         16,       // slightly higher max for more challenge
+        INCREMENT:    0.003,   // faster ramp-up (was 0.002)
     },
 
     OBSTACLE: {
-        MIN_INTERVAL: 60,
-        MAX_INTERVAL: 120,
+        MIN_INTERVAL: 50,      // shorter min gap (harder)
+        MAX_INTERVAL: 110,
         TYPES: [
-            { cssClass: 'obstacle-cactus', width: 25, height: 45, flyingY: false, color: 'green' },
-            { cssClass: 'obstacle-cactus', width: 25, height: 60, flyingY: false, color: 'green' },
-            { cssClass: 'obstacle-double', width: 45, height: 45, flyingY: false, color: 'darkgreen' },
-            { cssClass: 'obstacle-flying', width: 40, height: 30, flyingY: true, flyingBottom: 60, color: 'red' },
-            { cssClass: 'obstacle-flying', width: 40, height: 30, flyingY: true, flyingBottom: 100, color: 'darkred' },
+            // Ground trees (image-based)
+            { type: 'tree1', width: 48, height: 70, flyingY: false,
+              imgKey: 'tree1', imgW: 60, imgH: 85 },
+            { type: 'tree2', width: 55, height: 78, flyingY: false,
+              imgKey: 'tree2', imgW: 60, imgH: 85 },
+            { type: 'darkTree', width: 55, height: 80, flyingY: false,
+              imgKey: 'darkTree', imgW: 200, imgH: 120 },
+            // Double tree (stacked — harder to jump)
+            { type: 'doubleTree', width: 90, height: 70, flyingY: false,
+              imgKey: 'tree1', imgW: 60, imgH: 85, double: true },
+            // Flying obstacles — two heights
+            { type: 'flying1', width: 36, height: 36, flyingY: true, flyingBottom: 65,
+              imgKey: 'flying', frameW: 27, imgH: 30, numFrames: 1 },
+            { type: 'flying2', width: 36, height: 36, flyingY: true, flyingBottom: 105,
+              imgKey: 'flying', frameW: 27, imgH: 30, numFrames: 1 },
+            // High-altitude flyer (extra hard to duck under)
+            { type: 'flying3', width: 36, height: 36, flyingY: true, flyingBottom: 140,
+              imgKey: 'flying', frameW: 27, imgH: 30, numFrames: 1 },
         ],
     },
 
@@ -53,8 +98,14 @@ const CONFIG = {
     },
 
     ASSETS: {
-        PLAYER_SRC:     './assets/images/player.png',
-        BG_SRC:         './assets/images/background.png',
+        PLAYER_SRC:      './assets/images/player.png',
+        BG_SRC:          './assets/images/background.png',
+        CHAR2_SRC:       './assets/images/char2.png',
+        CHAR3_SRC:       './assets/images/char3.png',
+        TREE1_SRC:       './assets/images/obstacle_tree1.png',
+        TREE2_SRC:       './assets/images/obstacle_tree2.png',
+        DARK_TREE_SRC:   './assets/images/obstacle_dark_tree.png',
+        FLYING_SRC:      './assets/images/obstacle_flying.png',
     },
 };
 

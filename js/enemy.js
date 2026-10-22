@@ -1,34 +1,39 @@
 import CONFIG from './config.js';
 
 /**
- * Obstacle — single on-screen hazard.
- * Hitbox geometry is identical to the original implementation.
- * Visual drawing uses coloured rounded-rect shapes with outline for clarity.
+ * Obstacle — image-based tree / flying obstacle.
+ * Hitbox geometry is preserved from original; only drawing is replaced.
  */
 class Obstacle {
-    constructor(typeDef, gameWidth) {
+    constructor(typeDef, gameWidth, imgMap) {
         this.typeDef = typeDef;
         this.width   = typeDef.width;
         this.height  = typeDef.height;
         this.groundY = CONFIG.GROUND_Y;
         this.x       = gameWidth + 20;
+        this.imgMap  = imgMap;
 
-        // Animation: gentle oscillation for flying obstacles
-        this._phase = Math.random() * Math.PI * 2;
+        // Oscillation phase for flying obstacles
+        this._phase  = Math.random() * Math.PI * 2;
+        // Random slight size variation for variety
+        this._scale  = 0.85 + Math.random() * 0.3;
+
+        // For double-tree: second tree is offset
+        this._double = typeDef.double || false;
     }
 
     move(speed) {
-        this.x -= speed;
-        this._phase += 0.08; // advance oscillation each frame
+        this.x     -= speed;
+        this._phase += 0.07;
     }
 
     isOffScreen() {
         return this.x + this.width < 0;
     }
 
-    /** Hitbox rect — UNCHANGED from original to preserve collision feel. */
+    /** Hitbox — same calculation as original code */
     getRect() {
-        const margin = 5;
+        const margin = 6;
         const bottom = this.typeDef.flyingY ? this.typeDef.flyingBottom : this.groundY;
         return {
             left:   this.x + margin,
@@ -41,110 +46,62 @@ class Obstacle {
     draw(ctx, canvasHeight) {
         const isFlying = this.typeDef.flyingY;
         const bottom   = isFlying ? this.typeDef.flyingBottom : this.groundY;
-
-        // Flying obstacles bob gently
-        const flyBob = isFlying ? Math.sin(this._phase) * 4 : 0;
-        const y = canvasHeight - bottom - this.height + flyBob;
+        const flyBob   = isFlying ? Math.sin(this._phase) * 5 : 0;
+        const y        = canvasHeight - bottom - this.height + flyBob;
+        const def      = this.typeDef;
 
         ctx.save();
 
         if (isFlying) {
-            // Flying enemy: oval body + wing shapes
-            this._drawFlyingEnemy(ctx, this.x, y, this.width, this.height);
+            this._drawFlyingObstacle(ctx, this.x, y, def);
+        } else if (this._double) {
+            this._drawGroundTree(ctx, this.x,      y, def);
+            this._drawGroundTree(ctx, this.x + 48, y + 8, def); // offset second tree
         } else {
-            // Ground cactus / rock obstacle
-            this._drawGroundObstacle(ctx, this.x, y, this.width, this.height, this.typeDef.color);
+            this._drawGroundTree(ctx, this.x, y, def);
         }
 
         ctx.restore();
     }
 
-    _drawGroundObstacle(ctx, x, y, w, h, color) {
-        // Main body
-        ctx.fillStyle = color || '#27ae60';
-        this._roundRect(ctx, x, y, w, h, 4);
-        ctx.fill();
+    _drawGroundTree(ctx, x, y, def) {
+        const imgKey = def.imgKey;
+        const img    = this.imgMap[imgKey];
 
-        // Dark outline
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.lineWidth = 1.5;
-        this._roundRect(ctx, x, y, w, h, 4);
-        ctx.stroke();
-
-        // Highlight strip
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        this._roundRect(ctx, x + 3, y + 3, Math.max(w - 6, 4), Math.min(h / 3, 10), 2);
-        ctx.fill();
-
-        // Spikes on top (cactus feel)
-        ctx.fillStyle = color || '#27ae60';
-        const spikeCount = Math.max(1, Math.floor(w / 12));
-        const spikeW = Math.max(4, w / (spikeCount * 2));
-        for (let i = 0; i < spikeCount; i++) {
-            const sx = x + (w / (spikeCount + 1)) * (i + 1) - spikeW / 2;
-            ctx.beginPath();
-            ctx.moveTo(sx, y);
-            ctx.lineTo(sx + spikeW / 2, y - 8);
-            ctx.lineTo(sx + spikeW, y);
-            ctx.closePath();
-            ctx.fill();
+        if (img && img.complete && img.naturalWidth > 0) {
+            const iw = def.imgW || img.naturalWidth;
+            const ih = def.imgH || img.naturalHeight;
+            // Scale to fit hitbox width/height
+            const scale = Math.min(this.width / iw, this.height / ih) * this._scale;
+            const dw = iw * scale;
+            const dh = ih * scale;
+            ctx.drawImage(img, 0, 0, iw, ih, x + (this.width - dw) / 2, y + (this.height - dh), dw, dh);
+        } else {
+            // Fallback drawn tree
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(x, y, this.width, this.height);
         }
     }
 
-    _drawFlyingEnemy(ctx, x, y, w, h) {
-        // Body
-        ctx.fillStyle = '#9b59b6';
-        ctx.beginPath();
-        ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
+    _drawFlyingObstacle(ctx, x, y, def) {
+        const img = this.imgMap['flying'];
 
-        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Left wing
-        ctx.fillStyle = 'rgba(155, 89, 182, 0.7)';
-        ctx.beginPath();
-        ctx.moveTo(x + 4, y + h / 2);
-        ctx.quadraticCurveTo(x - w * 0.4, y - h * 0.4, x - w * 0.2, y + h * 0.1);
-        ctx.quadraticCurveTo(x, y + h * 0.5, x + 4, y + h / 2);
-        ctx.fill();
-
-        // Right wing
-        ctx.beginPath();
-        ctx.moveTo(x + w - 4, y + h / 2);
-        ctx.quadraticCurveTo(x + w + w * 0.4, y - h * 0.4, x + w + w * 0.2, y + h * 0.1);
-        ctx.quadraticCurveTo(x + w, y + h * 0.5, x + w - 4, y + h / 2);
-        ctx.fill();
-
-        // Eyes
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(x + w * 0.35, y + h * 0.4, h * 0.13, 0, Math.PI * 2);
-        ctx.arc(x + w * 0.65, y + h * 0.4, h * 0.13, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#333';
-        ctx.beginPath();
-        ctx.arc(x + w * 0.37, y + h * 0.42, h * 0.065, 0, Math.PI * 2);
-        ctx.arc(x + w * 0.67, y + h * 0.42, h * 0.065, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    _roundRect(ctx, x, y, w, h, r) {
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
+        if (img && img.complete && img.naturalWidth > 0) {
+            const frameW = def.frameW || 27;
+            const imgH   = def.imgH   || 30;
+            // Animate through available frames using phase
+            const frame  = Math.floor(this._phase / 0.4) % 3; // cycle 3 ghost frames
+            const srcX   = frame * frameW;
+            const dw     = this.width;
+            const dh     = this.height;
+            ctx.drawImage(img, srcX, 0, frameW, imgH, x, y, dw, dh);
+        } else {
+            // Fallback: purple ellipse
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.ellipse(x + this.width/2, y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI*2);
+            ctx.fill();
+        }
     }
 }
 
@@ -155,6 +112,11 @@ export class EnemyManager {
         this.gameWidth      = gameWidth;
         this.obstacles      = [];
         this.framesTillNext = this._nextInterval();
+        this.imgMap         = {};  // set by Game after asset load
+    }
+
+    setImages(imgMap) {
+        this.imgMap = imgMap;
     }
 
     update(speed) {
@@ -199,7 +161,7 @@ export class EnemyManager {
     _spawnRandom() {
         const types   = CONFIG.OBSTACLE.TYPES;
         const typeDef = types[Math.floor(Math.random() * types.length)];
-        this.obstacles.push(new Obstacle(typeDef, this.gameWidth));
+        this.obstacles.push(new Obstacle(typeDef, this.gameWidth, this.imgMap));
     }
 
     _nextInterval() {
