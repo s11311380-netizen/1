@@ -5,7 +5,7 @@ import { EnemyManager } from './enemy.js';
 
 const STATE = {
     LOADING:    'LOADING',
-    CHAR_SELECT:'CHAR_SELECT',   // NEW: character selection screen
+    CHAR_SELECT:'CHAR_SELECT',
     IDLE:       'IDLE',
     PLAYING:    'PLAYING',
     GAME_OVER:  'GAME_OVER',
@@ -13,7 +13,6 @@ const STATE = {
 
 export class Game {
     constructor() {
-        // ── DOM refs ──────────────────────────────────────────────────────────
         this.startScreen   = document.getElementById('startScreen');
         this.gameOverEl    = document.getElementById('gameOver');
         this.charSelectEl  = document.getElementById('charSelectScreen');
@@ -30,44 +29,40 @@ export class Game {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx    = this.canvas.getContext('2d');
 
-        // ── Core systems ──────────────────────────────────────────────────────
         this.audioMgr = new AudioManager();
         this.player   = new Player();
         this.enemies  = new EnemyManager(CONFIG.GAME_WIDTH);
 
-        // ── Game state ────────────────────────────────────────────────────────
-        this.state         = STATE.LOADING;
-        this.score         = 0;
-        this.highScore     = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
-        this.speed         = CONFIG.SPEED.INITIAL;
-        this.isNight       = false;
-        this.rafId         = null;
-        this.bgX           = 0;
+        this.state          = STATE.LOADING;
+        this.score          = 0;
+        this.highScore      = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
+        this.speed          = CONFIG.SPEED.INITIAL;
+        this.isNight        = false;
+        this.rafId          = null;
+        this.bgX            = 0;
         this._lastMilestone = 0;
         this._particles     = [];
 
-        // Selected character index (default 0)
         this._selectedCharIdx = 0;
 
-        // ── Image assets ──────────────────────────────────────────────────────
+        // Image dictionary for all assets
         this.imgs = {
             player:   new Image(),
             char2:    new Image(),
             char3:    new Image(),
+            char_rex: new Image(),
             bg:       new Image(),
             tree1:    new Image(),
             tree2:    new Image(),
+            tree3:    new Image(),
             darkTree: new Image(),
             flying:   new Image(),
         };
 
         this._updateScoreDisplay();
-        this._buildCharSelectUI();
         this._bindEvents();
         this._loadAssets();
     }
-
-    // ── Asset preloading ──────────────────────────────────────────────────────
 
     _loadAssets() {
         const total    = Object.keys(this.imgs).length;
@@ -78,15 +73,16 @@ export class Game {
             loaded++;
             if (loaded >= total && !resolved) enterCharSelect();
         };
+
         const enterCharSelect = () => {
             if (resolved) return;
             resolved = true;
             if (this.state !== STATE.LOADING) return;
 
-            // Pass obstacle images to EnemyManager
             this.enemies.setImages({
                 tree1:    this.imgs.tree1,
                 tree2:    this.imgs.tree2,
+                tree3:    this.imgs.tree3,
                 darkTree: this.imgs.darkTree,
                 flying:   this.imgs.flying,
             });
@@ -95,21 +91,21 @@ export class Game {
             if (this.loadingScreen) this.loadingScreen.style.display = 'none';
             if (this.charSelectEl)  this.charSelectEl.style.display  = 'flex';
             this._renderCharSelectCards();
-            // Draw idle background behind the overlay
             this._drawScene();
         };
 
-        // Safety timeout
-        setTimeout(enterCharSelect, 4000);
+        setTimeout(enterCharSelect, 3000);
 
         const A = CONFIG.ASSETS;
         const srcs = {
             player:   A.PLAYER_SRC,
             char2:    A.CHAR2_SRC,
             char3:    A.CHAR3_SRC,
+            char_rex: A.CHAR_REX_SRC,
             bg:       A.BG_SRC,
             tree1:    A.TREE1_SRC,
             tree2:    A.TREE2_SRC,
+            tree3:    A.TREE3_SRC,
             darkTree: A.DARK_TREE_SRC,
             flying:   A.FLYING_SRC,
         };
@@ -120,15 +116,7 @@ export class Game {
             this.imgs[key].src     = src;
         }
 
-        // All cached already
         if (Object.values(this.imgs).every(i => i.complete)) enterCharSelect();
-    }
-
-    // ── Character select ──────────────────────────────────────────────────────
-
-    _buildCharSelectUI() {
-        if (!this.charSelectEl) return;
-        // Cards are generated dynamically
     }
 
     _renderCharSelectCards() {
@@ -141,12 +129,11 @@ export class Game {
             card.className = 'char-card' + (idx === this._selectedCharIdx ? ' selected' : '');
             card.dataset.idx = idx;
 
-            // Mini canvas preview
             const cvs = document.createElement('canvas');
             cvs.width  = 100;
-            cvs.height = 80;
+            cvs.height = 75;
             cvs.style.display = 'block';
-            cvs.style.margin  = '0 auto 8px';
+            cvs.style.margin  = '0 auto 6px';
             this._drawCharPreview(cvs, ch);
 
             const nameEl = document.createElement('div');
@@ -177,37 +164,29 @@ export class Game {
 
         let img = null;
         switch (charDef.id) {
-            case 'stego':  img = this.imgs.player; break;
-            case 'raptor': img = this.imgs.char2;  break;
-            case 'bronto': img = this.imgs.char3;  break;
+            case 'stego':  img = this.imgs.player;   break;
+            case 'raptor': img = this.imgs.char2;    break;
+            case 'bronto': img = this.imgs.char3;    break;
+            case 'rex':    img = this.imgs.char_rex; break;
         }
 
         if (img && img.complete && img.naturalWidth > 0) {
             const sw = charDef.isSheet ? charDef.frameW : (charDef.srcW || img.naturalWidth);
             const sh = charDef.isSheet ? charDef.frameH : (charDef.srcH || img.naturalHeight);
-            const scale = Math.min(cvs.width / sw, cvs.height / sh) * 0.85;
+            const scale = Math.min((cvs.width - 10) / sw, (cvs.height - 10) / sh);
             const dw = sw * scale;
             const dh = sh * scale;
             const dx = (cvs.width  - dw) / 2;
             const dy = (cvs.height - dh) / 2;
 
-            if (charDef.whiteBackground) {
-                ctx.fillStyle = '#e8f4fc';
-                ctx.fillRect(0, 0, cvs.width, cvs.height);
-                ctx.globalCompositeOperation = 'multiply';
-            }
             ctx.drawImage(img, charDef.srcX || 0, charDef.srcY || 0, sw, sh, dx, dy, dw, dh);
-            ctx.globalCompositeOperation = 'source-over';
         } else {
-            // Placeholder circle
             ctx.fillStyle = charDef.color || '#2ecc71';
             ctx.beginPath();
-            ctx.arc(cvs.width/2, cvs.height/2, 28, 0, Math.PI*2);
+            ctx.arc(cvs.width/2, cvs.height/2, 24, 0, Math.PI*2);
             ctx.fill();
         }
     }
-
-    // ── Confirm character selection and enter IDLE ────────────────────────────
 
     _confirmCharSelect() {
         const charDef = CONFIG.CHARACTERS[this._selectedCharIdx];
@@ -220,11 +199,9 @@ export class Game {
         this._drawIdle();
     }
 
-    // ── Game lifecycle ────────────────────────────────────────────────────────
-
     start() {
         if (this.state === STATE.PLAYING || this.state === STATE.LOADING) return;
-        if (this.state === STATE.CHAR_SELECT) return; // must confirm first
+        if (this.state === STATE.CHAR_SELECT) return;
 
         this.audioMgr.onUserInteraction();
         this.audioMgr.startBgm();
@@ -250,8 +227,6 @@ export class Game {
         if (gameEl) gameEl.classList.toggle('night', this.isNight);
     }
 
-    // ── Main loop ─────────────────────────────────────────────────────────────
-
     _drawIdle() {
         if (this.state !== STATE.IDLE) return;
         this._drawScene();
@@ -266,7 +241,6 @@ export class Game {
         this.player.update();
         this.enemies.update(this.speed);
 
-        // Scroll bg
         if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
             const scale = this.canvas.height / this.imgs.bg.naturalHeight;
             const bgW   = this.imgs.bg.naturalWidth * scale;
@@ -309,8 +283,6 @@ export class Game {
         this.gameOverEl.style.display = 'flex';
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
-
     _drawScene() {
         const ctx = this.ctx;
         const cW  = this.canvas.width;
@@ -318,13 +290,11 @@ export class Game {
 
         ctx.clearRect(0, 0, cW, cH);
 
-        // Night overlay
         if (this.isNight) {
             ctx.fillStyle = 'rgba(10, 10, 46, 0.92)';
             ctx.fillRect(0, 0, cW, cH);
         }
 
-        // Background parallax
         if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
             const bgNatW = this.imgs.bg.naturalWidth;
             const bgNatH = this.imgs.bg.naturalHeight;
@@ -350,7 +320,6 @@ export class Game {
             ctx.fillRect(0, 0, cW, cH);
         }
 
-        // Ground line
         const groundLineY = cH - CONFIG.GROUND_Y;
         ctx.strokeStyle = this.isNight ? 'rgba(200,200,255,0.6)' : 'rgba(0,0,0,0.5)';
         ctx.lineWidth   = 2;
@@ -359,7 +328,6 @@ export class Game {
         ctx.lineTo(cW, groundLineY);
         ctx.stroke();
 
-        // Ground strip
         const groundGrad = ctx.createLinearGradient(0, groundLineY, 0, cH);
         if (this.isNight) {
             groundGrad.addColorStop(0, '#2d4a1e'); groundGrad.addColorStop(1, '#1a3a0a');
@@ -369,16 +337,9 @@ export class Game {
         ctx.fillStyle = groundGrad;
         ctx.fillRect(0, groundLineY, cW, CONFIG.GROUND_Y);
 
-        // Particles
         this._drawParticles(ctx);
-
-        // Enemies
         this.enemies.draw(ctx, cH);
-
-        // Player
         this.player.draw(ctx, this.imgs, cH);
-
-        // Producer tag (top-left)
         this._drawProducerTag(ctx, cW, cH);
     }
 
@@ -414,8 +375,6 @@ export class Game {
         ctx.fillText(text, bx + padX, by + padY);
         ctx.restore();
     }
-
-    // ── Particle system ───────────────────────────────────────────────────────
 
     _spawnRunParticles() {
         if (!this.player.isOnGround || this.player.isDucking) return;
@@ -463,15 +422,11 @@ export class Game {
         }
     }
 
-    // ── UI ────────────────────────────────────────────────────────────────────
-
     _updateScoreDisplay() {
         this.scoreEl.textContent     = String(Math.floor(this.score)).padStart(5, '0');
         this.highScoreEl.textContent = String(this.highScore).padStart(5, '0');
         this.speedTextEl.textContent = ' ' + (this.speed / CONFIG.SPEED.INITIAL).toFixed(1) + 'x';
     }
-
-    // ── Events ────────────────────────────────────────────────────────────────
 
     _bindEvents() {
         document.addEventListener('keydown', e => this._onKeyDown(e));
@@ -479,7 +434,6 @@ export class Game {
 
         this.restartBtn?.addEventListener('click', () => {
             this.audioMgr.onUserInteraction();
-            // Go back to char select on game over restart
             this._goToCharSelect();
         });
 
@@ -500,7 +454,6 @@ export class Game {
             this.sfxBtn.classList.toggle('muted', muted);
         });
 
-        // Confirm character selection button
         document.getElementById('confirmCharBtn')?.addEventListener('click', () => {
             this.audioMgr.onUserInteraction();
             this._confirmCharSelect();
@@ -533,12 +486,11 @@ export class Game {
         const key = e.code;
         this.audioMgr.onUserInteraction();
 
-        // Confirm char select with Enter
         if (key === 'Enter' && this.state === STATE.CHAR_SELECT) {
             this._confirmCharSelect();
             return;
         }
-        // Arrow keys to cycle characters in char select
+
         if (this.state === STATE.CHAR_SELECT) {
             if (key === 'ArrowLeft') {
                 this._selectedCharIdx = (this._selectedCharIdx - 1 + CONFIG.CHARACTERS.length) % CONFIG.CHARACTERS.length;

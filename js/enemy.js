@@ -1,39 +1,33 @@
 import CONFIG from './config.js';
 
 /**
- * Obstacle — image-based tree / flying obstacle.
- * Hitbox geometry is preserved from original; only drawing is replaced.
+ * Obstacle — image-based tree and flying monster obstacles.
+ * Hitbox geometry is fully preserved; drawing uses clean transparent sprites.
  */
 class Obstacle {
     constructor(typeDef, gameWidth, imgMap) {
-        this.typeDef = typeDef;
-        this.width   = typeDef.width;
-        this.height  = typeDef.height;
-        this.groundY = CONFIG.GROUND_Y;
-        this.x       = gameWidth + 20;
-        this.imgMap  = imgMap;
+        this.typeDef  = typeDef;
+        this.width    = typeDef.width;
+        this.height   = typeDef.height;
+        this.groundY  = CONFIG.GROUND_Y;
+        this.x        = gameWidth + 20;
+        this.imgMap   = imgMap;
 
         // Oscillation phase for flying obstacles
-        this._phase  = Math.random() * Math.PI * 2;
-        // Random slight size variation for variety
-        this._scale  = 0.85 + Math.random() * 0.3;
-
-        // For double-tree: second tree is offset
-        this._double = typeDef.double || false;
+        this._phase   = Math.random() * Math.PI * 2;
     }
 
     move(speed) {
         this.x     -= speed;
-        this._phase += 0.07;
+        this._phase += 0.08;
     }
 
     isOffScreen() {
         return this.x + this.width < 0;
     }
 
-    /** Hitbox — same calculation as original code */
     getRect() {
-        const margin = 6;
+        const margin = 5;
         const bottom = this.typeDef.flyingY ? this.typeDef.flyingBottom : this.groundY;
         return {
             left:   this.x + margin,
@@ -46,7 +40,7 @@ class Obstacle {
     draw(ctx, canvasHeight) {
         const isFlying = this.typeDef.flyingY;
         const bottom   = isFlying ? this.typeDef.flyingBottom : this.groundY;
-        const flyBob   = isFlying ? Math.sin(this._phase) * 5 : 0;
+        const flyBob   = isFlying ? Math.sin(this._phase * 1.5) * 4 : 0;
         const y        = canvasHeight - bottom - this.height + flyBob;
         const def      = this.typeDef;
 
@@ -54,9 +48,6 @@ class Obstacle {
 
         if (isFlying) {
             this._drawFlyingObstacle(ctx, this.x, y, def);
-        } else if (this._double) {
-            this._drawGroundTree(ctx, this.x,      y, def);
-            this._drawGroundTree(ctx, this.x + 48, y + 8, def); // offset second tree
         } else {
             this._drawGroundTree(ctx, this.x, y, def);
         }
@@ -69,15 +60,9 @@ class Obstacle {
         const img    = this.imgMap[imgKey];
 
         if (img && img.complete && img.naturalWidth > 0) {
-            const iw = def.imgW || img.naturalWidth;
-            const ih = def.imgH || img.naturalHeight;
-            // Scale to fit hitbox width/height
-            const scale = Math.min(this.width / iw, this.height / ih) * this._scale;
-            const dw = iw * scale;
-            const dh = ih * scale;
-            ctx.drawImage(img, 0, 0, iw, ih, x + (this.width - dw) / 2, y + (this.height - dh), dw, dh);
+            // Draw clean tree fitted to obstacle dimensions, anchored to the ground
+            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, x, y, this.width, this.height);
         } else {
-            // Fallback drawn tree
             ctx.fillStyle = '#27ae60';
             ctx.fillRect(x, y, this.width, this.height);
         }
@@ -87,17 +72,14 @@ class Obstacle {
         const img = this.imgMap['flying'];
 
         if (img && img.complete && img.naturalWidth > 0) {
-            const frameW = def.frameW || 27;
-            const imgH   = def.imgH   || 30;
-            // Animate through available frames using phase
-            const frame  = Math.floor(this._phase / 0.4) % 3; // cycle 3 ghost frames
-            const srcX   = frame * frameW;
-            const dw     = this.width;
-            const dh     = this.height;
-            ctx.drawImage(img, srcX, 0, frameW, imgH, x, y, dw, dh);
+            const frameW   = def.frameW || 14;
+            const frameH   = def.frameH || 16;
+            // Flap wings: toggle frame 0 and frame 1 every few updates
+            const frameIdx = Math.floor(this._phase * 2) % 2;
+            const srcX     = frameIdx * frameW;
+            ctx.drawImage(img, srcX, 0, frameW, frameH, x, y, this.width, this.height);
         } else {
-            // Fallback: purple ellipse
-            ctx.fillStyle = '#9b59b6';
+            ctx.fillStyle = '#8e44ad';
             ctx.beginPath();
             ctx.ellipse(x + this.width/2, y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI*2);
             ctx.fill();
@@ -112,7 +94,7 @@ export class EnemyManager {
         this.gameWidth      = gameWidth;
         this.obstacles      = [];
         this.framesTillNext = this._nextInterval();
-        this.imgMap         = {};  // set by Game after asset load
+        this.imgMap         = {};
     }
 
     setImages(imgMap) {
