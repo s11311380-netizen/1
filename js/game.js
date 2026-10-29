@@ -37,7 +37,12 @@ export class Game {
         this.score          = 0;
         this.highScore      = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
         this.speed          = CONFIG.SPEED.INITIAL;
+
+        // Day/Night state — driven by distance travelled
         this.isNight        = false;
+        this._distance      = 0;         // cumulative distance (speed units per frame)
+        this._lastDayNightThreshold = 0; // last threshold at which we toggled
+
         this.rafId          = null;
         this.bgX            = 0;
         this._lastMilestone = 0;
@@ -47,23 +52,31 @@ export class Game {
 
         // Image dictionary for all assets
         this.imgs = {
-            bg:    new Image(),
-            dino1: new Image(),
-            dino2: new Image(),
-            dino3: new Image(),
-            dino4: new Image(),
-            dino5: new Image(),
-            tree1: new Image(),
-            tree2: new Image(),
-            tree3: new Image(),
-            tree4: new Image(),
-            tree5: new Image(),
-            tree6: new Image(),
-            tree7: new Image(),
-            tree8: new Image(),
-            fly1:  new Image(),
-            fly2:  new Image(),
-            fly3:  new Image(),
+            bgDay:   new Image(),
+            bgNight: new Image(),
+            dino1:   new Image(),
+            dino2:   new Image(),
+            dino3:   new Image(),
+            dino4:   new Image(),
+            dino5:   new Image(),
+            tree1:   new Image(),
+            tree2:   new Image(),
+            tree3:   new Image(),
+            tree4:   new Image(),
+            tree5:   new Image(),
+            tree6:   new Image(),
+            tree7:   new Image(),
+            tree8:   new Image(),
+            fly1:    new Image(),
+            fly2:    new Image(),
+            fly3:    new Image(),
+            fruit1:  new Image(),
+            fruit2:  new Image(),
+            fruit3:  new Image(),
+            fruit4:  new Image(),
+            fruit5:  new Image(),
+            meteor:    new Image(),
+            explosion: new Image(),
         };
 
         this._updateScoreDisplay();
@@ -86,19 +99,26 @@ export class Game {
             resolved = true;
             if (this.state !== STATE.LOADING) return;
 
-            // Pass tree and flying obstacle images to EnemyManager
+            // Pass obstacle / fruit / meteor / explosion images to EnemyManager
             this.enemies.setImages({
-                tree1: this.imgs.tree1,
-                tree2: this.imgs.tree2,
-                tree3: this.imgs.tree3,
-                tree4: this.imgs.tree4,
-                tree5: this.imgs.tree5,
-                tree6: this.imgs.tree6,
-                tree7: this.imgs.tree7,
-                tree8: this.imgs.tree8,
-                fly1:  this.imgs.fly1,
-                fly2:  this.imgs.fly2,
-                fly3:  this.imgs.fly3,
+                tree1:     this.imgs.tree1,
+                tree2:     this.imgs.tree2,
+                tree3:     this.imgs.tree3,
+                tree4:     this.imgs.tree4,
+                tree5:     this.imgs.tree5,
+                tree6:     this.imgs.tree6,
+                tree7:     this.imgs.tree7,
+                tree8:     this.imgs.tree8,
+                fly1:      this.imgs.fly1,
+                fly2:      this.imgs.fly2,
+                fly3:      this.imgs.fly3,
+                fruit1:    this.imgs.fruit1,
+                fruit2:    this.imgs.fruit2,
+                fruit3:    this.imgs.fruit3,
+                fruit4:    this.imgs.fruit4,
+                fruit5:    this.imgs.fruit5,
+                meteor:    this.imgs.meteor,
+                explosion: this.imgs.explosion,
             });
 
             this.state = STATE.CHAR_SELECT;
@@ -109,27 +129,35 @@ export class Game {
         };
 
         // Safety fallback timeout
-        setTimeout(enterCharSelect, 3000);
+        setTimeout(enterCharSelect, 4000);
 
         const A = CONFIG.ASSETS;
         const srcs = {
-            bg:    A.BG_SRC,
-            dino1: A.DINO1_SRC,
-            dino2: A.DINO2_SRC,
-            dino3: A.DINO3_SRC,
-            dino4: A.DINO4_SRC,
-            dino5: A.DINO5_SRC,
-            tree1: A.TREE1_SRC,
-            tree2: A.TREE2_SRC,
-            tree3: A.TREE3_SRC,
-            tree4: A.TREE4_SRC,
-            tree5: A.TREE5_SRC,
-            tree6: A.TREE6_SRC,
-            tree7: A.TREE7_SRC,
-            tree8: A.TREE8_SRC,
-            fly1:  A.FLY1_SRC,
-            fly2:  A.FLY2_SRC,
-            fly3:  A.FLY3_SRC,
+            bgDay:   A.BG_DAY_SRC,
+            bgNight: A.BG_NIGHT_SRC,
+            dino1:   A.DINO1_SRC,
+            dino2:   A.DINO2_SRC,
+            dino3:   A.DINO3_SRC,
+            dino4:   A.DINO4_SRC,
+            dino5:   A.DINO5_SRC,
+            tree1:   A.TREE1_SRC,
+            tree2:   A.TREE2_SRC,
+            tree3:   A.TREE3_SRC,
+            tree4:   A.TREE4_SRC,
+            tree5:   A.TREE5_SRC,
+            tree6:   A.TREE6_SRC,
+            tree7:   A.TREE7_SRC,
+            tree8:   A.TREE8_SRC,
+            fly1:    A.FLY1_SRC,
+            fly2:    A.FLY2_SRC,
+            fly3:    A.FLY3_SRC,
+            fruit1:  A.FRUIT1_SRC,
+            fruit2:  A.FRUIT2_SRC,
+            fruit3:  A.FRUIT3_SRC,
+            fruit4:  A.FRUIT4_SRC,
+            fruit5:  A.FRUIT5_SRC,
+            meteor:    A.METEOR_SRC,
+            explosion: A.EXPLOSION_SRC,
         };
 
         for (const [key, src] of Object.entries(srcs)) {
@@ -195,8 +223,16 @@ export class Game {
             const dx    = (cvs.width - dw) / 2;
             const dy    = (cvs.height - dh) / 2;
 
-            // Draw first frame for preview
-            ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+            if (charDef.flipH) {
+                // Flip horizontally in preview as well
+                ctx.save();
+                ctx.translate(cvs.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, 0, 0, sw, sh, cvs.width - dx - dw, dy, dw, dh);
+                ctx.restore();
+            } else {
+                ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+            }
         } else {
             ctx.fillStyle = charDef.color || '#2ecc71';
             ctx.beginPath();
@@ -228,20 +264,21 @@ export class Game {
         this.speed          = CONFIG.SPEED.INITIAL;
         this._lastMilestone = 0;
         this._particles     = [];
+        this._distance      = 0;
+        this._lastDayNightThreshold = 0;
+        this.isNight        = false;
 
         this.player.reset();
         this.enemies.reset();
+        this.enemies.setIsNight(false);
+
+        const gameEl = document.getElementById('game');
+        if (gameEl) gameEl.classList.remove('night');
 
         this.startScreen.style.display = 'none';
         this.gameOverEl.style.display  = 'none';
 
         this._loop();
-    }
-
-    toggleNight() {
-        this.isNight = !this.isNight;
-        const gameEl = document.getElementById('game');
-        if (gameEl) gameEl.classList.toggle('night', this.isNight);
     }
 
     _drawIdle() {
@@ -256,22 +293,54 @@ export class Game {
         // Progressive speed ramp up
         this.speed = Math.min(this.speed + CONFIG.SPEED.INCREMENT, CONFIG.SPEED.MAX);
 
-        this.player.update();
-        this.enemies.update(this.speed);
+        // ── Day/Night switching by distance ──
+        this._distance += this.speed;
+        const switchInterval = CONFIG.DAY_NIGHT.SWITCH_INTERVAL;
+        const currentThreshold = Math.floor(this._distance / switchInterval) * switchInterval;
+        if (currentThreshold > this._lastDayNightThreshold) {
+            this._lastDayNightThreshold = currentThreshold;
+            this._toggleDayNight();
+        }
 
-        // Parallax background
-        if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
-            const scale = this.canvas.height / this.imgs.bg.naturalHeight;
-            const bgW   = this.imgs.bg.naturalWidth * scale;
+        this.player.update();
+        this.enemies.update(this.speed, this.canvas.height);
+
+        // Parallax background scrolling
+        const bgImg = this.isNight ? this.imgs.bgNight : this.imgs.bgDay;
+        if (bgImg.complete && bgImg.naturalWidth > 0) {
+            const scale = this.canvas.height / bgImg.naturalHeight;
+            const bgW   = bgImg.naturalWidth * scale;
             this.bgX   -= this.speed * 0.5;
             if (this.bgX <= -bgW) this.bgX = 0;
         }
 
         this._updateParticles();
 
-        if (this.enemies.checkCollision(this.player.getRect())) {
-            this._endGame();
-            return;
+        // ── Fruit collision ──
+        const hitFruit = this.enemies.checkFruitCollision(this.player.getRect());
+        if (hitFruit) {
+            hitFruit.isDead = true;
+            this.player.stars++;
+            this.audioMgr.playFruit();
+            // Trigger explosion of a random obstacle (one-time, consumed now)
+            this.enemies.explodeRandom(this.audioMgr);
+        }
+
+        // ── Enemy / meteor collision ──
+        const collisionResult = this.enemies.checkCollision(this.player.getRect());
+        if (collisionResult.hit && this.player.invincibleFrames === 0) {
+            if (this.player.stars > 0) {
+                // Absorb the hit with a star
+                this.player.stars--;
+                this.player.invincibleFrames = 80;
+                // Explode the specific obstacle that hit us
+                if (collisionResult.obstacle) collisionResult.obstacle.triggerExplosion();
+                if (collisionResult.meteor)   collisionResult.meteor.triggerExplosion();
+                this.audioMgr.playExplosion();
+            } else {
+                this._endGame();
+                return;
+            }
         }
 
         this.score += CONFIG.SCORE.INCREMENT_PER_FRAME;
@@ -280,6 +349,16 @@ export class Game {
 
         this._drawScene();
         this.rafId = requestAnimationFrame(() => this._loop());
+    }
+
+    _toggleDayNight() {
+        this.isNight = !this.isNight;
+        this.enemies.setIsNight(this.isNight);
+        const gameEl = document.getElementById('game');
+        if (gameEl) gameEl.classList.toggle('night', this.isNight);
+        if (this.isNight) {
+            this.audioMgr.playMeteor();
+        }
     }
 
     _endGame() {
@@ -309,26 +388,20 @@ export class Game {
 
         ctx.clearRect(0, 0, cW, cH);
 
-        if (this.isNight) {
-            ctx.fillStyle = 'rgba(10, 10, 46, 0.92)';
-            ctx.fillRect(0, 0, cW, cH);
-        }
-
-        // Draw background
-        if (this.imgs.bg.complete && this.imgs.bg.naturalWidth > 0) {
-            const bgNatW = this.imgs.bg.naturalWidth;
-            const bgNatH = this.imgs.bg.naturalHeight;
+        // ── Background ──
+        const bgImg = this.isNight ? this.imgs.bgNight : this.imgs.bgDay;
+        if (bgImg.complete && bgImg.naturalWidth > 0) {
+            const bgNatW = bgImg.naturalWidth;
+            const bgNatH = bgImg.naturalHeight;
             const scale  = cH / bgNatH;
             const bgW    = bgNatW * scale;
-            const bgH    = cH;
 
-            if (this.isNight) ctx.globalAlpha = 0.4;
-            ctx.drawImage(this.imgs.bg, this.bgX,       0, bgW, bgH);
-            ctx.drawImage(this.imgs.bg, this.bgX + bgW, 0, bgW, bgH);
+            ctx.drawImage(bgImg, this.bgX,       0, bgW, cH);
+            ctx.drawImage(bgImg, this.bgX + bgW, 0, bgW, cH);
             if (this.bgX + bgW * 2 < cW)
-                ctx.drawImage(this.imgs.bg, this.bgX + bgW * 2, 0, bgW, bgH);
-            ctx.globalAlpha = 1.0;
+                ctx.drawImage(bgImg, this.bgX + bgW * 2, 0, bgW, cH);
         } else {
+            // Fallback gradient
             const grad = ctx.createLinearGradient(0, 0, 0, cH);
             if (this.isNight) {
                 grad.addColorStop(0, '#0a0a2e'); grad.addColorStop(1, '#1a3a0a');
@@ -340,7 +413,7 @@ export class Game {
             ctx.fillRect(0, 0, cW, cH);
         }
 
-        // Ground line
+        // ── Ground line ──
         const groundLineY = cH - CONFIG.GROUND_Y;
         ctx.strokeStyle = this.isNight ? 'rgba(200,200,255,0.6)' : 'rgba(0,0,0,0.5)';
         ctx.lineWidth   = 2;
@@ -349,7 +422,7 @@ export class Game {
         ctx.lineTo(cW, groundLineY);
         ctx.stroke();
 
-        // Ground strip
+        // ── Ground strip ──
         const groundGrad = ctx.createLinearGradient(0, groundLineY, 0, cH);
         if (this.isNight) {
             groundGrad.addColorStop(0, '#2d4a1e'); groundGrad.addColorStop(1, '#1a3a0a');
@@ -361,14 +434,48 @@ export class Game {
 
         this._drawParticles(ctx);
 
-        // Ground trees and airborne monsters
+        // Ground trees, airborne monsters, fruits, meteors
         this.enemies.draw(ctx, cH);
 
-        // Player with running animation
+        // Player with running animation (draws stars above head)
         this.player.draw(ctx, this.imgs, cH);
 
         // Producer tag (top-left)
         this._drawProducerTag(ctx, cW, cH);
+
+        // Star count HUD (if more than 0, show a clear indicator top-centre)
+        if (this.player.stars > 0 && this.state === STATE.PLAYING) {
+            this._drawStarHUD(ctx, cW);
+        }
+    }
+
+    _drawStarHUD(ctx, cW) {
+        ctx.save();
+        ctx.font = 'bold 13px "Microsoft JhengHei", Arial, sans-serif';
+        ctx.textBaseline = 'top';
+        const text = `⭐ × ${this.player.stars}`;
+        const tw = ctx.measureText(text).width;
+        const bx = cW / 2 - tw / 2 - 6;
+        const by = 6;
+        const bw = tw + 12;
+        const bh = 20;
+        const r  = 6;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.beginPath();
+        ctx.moveTo(bx + r, by);
+        ctx.lineTo(bx + bw - r, by);
+        ctx.quadraticCurveTo(bx + bw, by,      bx + bw, by + r);
+        ctx.lineTo(bx + bw, by + bh - r);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+        ctx.lineTo(bx + r, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh,      bx, by + bh - r);
+        ctx.lineTo(bx, by + r);
+        ctx.quadraticCurveTo(bx, by,            bx + r, by);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText(text, bx + 6, by + 3);
+        ctx.restore();
     }
 
     _drawProducerTag(ctx, cW, cH) {
@@ -465,7 +572,10 @@ export class Game {
             this._goToCharSelect();
         });
 
-        this.nightModeBtn?.addEventListener('click', () => this.toggleNight());
+        this.nightModeBtn?.addEventListener('click', () => {
+            this.audioMgr.onUserInteraction();
+            this._toggleDayNight();
+        });
 
         this.musicBtn?.addEventListener('click', () => {
             this.audioMgr.onUserInteraction();

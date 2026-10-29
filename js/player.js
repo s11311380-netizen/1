@@ -3,6 +3,7 @@ import CONFIG from './config.js';
 /**
  * Player — handles physics, collision hitbox, and running sprite animations.
  * EVERY dinosaur character has a multi-frame running animation sprite sheet.
+ * Stars (shields) are displayed above the player's head.
  */
 export class Player {
     constructor() {
@@ -21,6 +22,12 @@ export class Player {
         this.frameTimer   = 0;
         this.currentFrame = 0;
         this.facingRight  = true;
+
+        // Stars (shield charges): earned by eating fruit
+        this.stars = 0;
+
+        // Brief invincibility after absorbing a hit (frames countdown)
+        this.invincibleFrames = 0;
 
         // Selected character definition (default dino1)
         this.charDef = CONFIG.CHARACTERS[0];
@@ -58,7 +65,9 @@ export class Player {
         this.bottom      = this._baseBottom;
         this.currentFrame = 0;
         this.frameTimer   = 0;
-        this.facingRight  = true; // Always face forward towards obstacles
+        this.facingRight  = true;
+        this.stars        = 0;
+        this.invincibleFrames = 0;
     }
 
     update() {
@@ -71,6 +80,11 @@ export class Player {
             this.frameTimer   = 0;
             const maxFrames   = this.charDef.numFrames || 6;
             this.currentFrame = (this.currentFrame + 1) % maxFrames;
+        }
+
+        // Countdown invincibility frames
+        if (this.invincibleFrames > 0) {
+            this.invincibleFrames--;
         }
     }
 
@@ -101,9 +115,19 @@ export class Player {
         // Retrieve the corresponding sprite image
         const img = imgMap[this.charDef.id];
 
+        // Draw star shields above the player's head before drawing the dino
+        if (this.stars > 0) {
+            this._drawStars(ctx, x, y, w);
+        }
+
         if (!img || !img.complete || img.naturalWidth === 0) {
             ctx.fillStyle = this.isDead ? '#e74c3c' : (this.charDef.color || '#2ecc71');
             ctx.fillRect(x, y, w, h);
+            return;
+        }
+
+        // Invincibility blink effect: skip drawing every other 4 frames
+        if (this.invincibleFrames > 0 && Math.floor(this.invincibleFrames / 4) % 2 === 0) {
             return;
         }
 
@@ -111,12 +135,12 @@ export class Player {
         let alpha    = 1.0;
 
         if (this.isDead) {
-            rotation = Math.PI / 8; // tilt back on death
+            rotation = Math.PI / 8;
             alpha    = 0.85;
         } else if (this.isJumping || !this.isOnGround) {
-            rotation = -Math.PI / 14; // slight upward tilt mid-air
+            rotation = -Math.PI / 14;
         } else if (this.isDucking) {
-            rotation = Math.PI / 12;  // squash & stretch while ducking
+            rotation = Math.PI / 12;
         }
 
         ctx.save();
@@ -126,17 +150,23 @@ export class Player {
         const cy = y + h / 2;
         ctx.translate(cx, cy);
 
-        // Mirror when facing left
-        if (!this.facingRight) ctx.scale(-1, 1);
+        // charDef.flipH: sprite faces left by default → needs horizontal flip to face right.
+        // facingRight=true (default): dino heads to the right (towards obstacles).
+        // For a normal sprite (no flipH): facingRight=true → do NOT mirror.
+        // For flipH sprite:             facingRight=true → DO mirror (flip to face right).
+        // facingRight=false: reverse the above (player pressed left).
+        const needsFlip = this.charDef.flipH ? this.facingRight : !this.facingRight;
+        if (needsFlip) ctx.scale(-1, 1);
+
         ctx.rotate(rotation);
 
         // Frame slice calculation
-        const def       = this.charDef;
-        const frameW    = def.frameW;
-        const frameH    = def.frameH;
+        const def    = this.charDef;
+        const frameW = def.frameW;
+        const frameH = def.frameH;
         // In the air, hold a dynamic leap frame (frame 1), on ground cycle through all running frames
-        const frameIdx  = this.isOnGround ? this.currentFrame : 1;
-        const srcX      = frameIdx * frameW;
+        const frameIdx = this.isOnGround ? this.currentFrame : 1;
+        const srcX     = frameIdx * frameW;
 
         // Draw the cleanly sliced frame
         ctx.drawImage(img, srcX, 0, frameW, frameH, -w / 2, -h / 2, w, h);
@@ -148,6 +178,19 @@ export class Player {
             ctx.fillRect(-w / 2, -h / 2, w, h);
         }
 
+        ctx.restore();
+    }
+
+    _drawStars(ctx, playerX, playerY, playerW) {
+        ctx.save();
+        ctx.font = '14px serif';
+        ctx.textBaseline = 'bottom';
+        const starStr = '⭐'.repeat(Math.min(this.stars, 5));
+        const overflow = this.stars > 5 ? ` +${this.stars - 5}` : '';
+        const text = starStr + overflow;
+        // Centre above the player
+        const tw = ctx.measureText(text).width;
+        ctx.fillText(text, playerX + playerW / 2 - tw / 2, playerY - 2);
         ctx.restore();
     }
 

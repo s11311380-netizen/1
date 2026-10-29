@@ -17,13 +17,25 @@ export class AudioManager {
         this.sfxJump = new Audio('./assets/audio/sfx_jump.wav');
         this.sfxJump.volume = 0.7;
 
-        // ── SFX: die — generated via Web Audio API (no extra file needed) ───
+        // ── SFX: fruit (eat) ─────────────────────────────────────────────────
+        this.sfxFruit = new Audio('./assets/audio/sfx_fruit.mp3');
+        this.sfxFruit.volume = 0.8;
+
+        // ── SFX: explosion ────────────────────────────────────────────────────
+        this.sfxExplosion = new Audio('./assets/audio/sfx_explosion.wav');
+        this.sfxExplosion.volume = 0.7;
+
+        // ── SFX: meteor ───────────────────────────────────────────────────────
+        this.sfxMeteor = new Audio('./assets/audio/sfx_meteor.wav');
+        this.sfxMeteor.volume = 0.65;
+
+        // ── SFX: die — generated via Web Audio API ───────────────────────────
         this._audioCtx = null; // lazily created on first interaction
 
         // ── State ─────────────────────────────────────────────────────────────
         this.isMuted       = false;
-        this.isMusicMuted  = false; // separate music mute toggle
-        this.isSfxMuted    = false; // separate SFX mute toggle
+        this.isMusicMuted  = false;
+        this.isSfxMuted    = false;
         this.hasStartedBgm = false;
         this._userInteracted = false;
     }
@@ -32,15 +44,13 @@ export class AudioManager {
     onUserInteraction() {
         if (this._userInteracted) return;
         this._userInteracted = true;
-
-        // Unlock Web Audio API context (required for Chrome)
         this._getAudioCtx();
     }
 
     // ── Public: start BGM (respects autoplay policy) ─────────────────────────
     startBgm() {
         if (this.isMusicMuted) return;
-        if (!this._userInteracted) return; // wait for first interaction
+        if (!this._userInteracted) return;
 
         const p = this.bgm.play();
         if (p !== undefined) {
@@ -50,7 +60,6 @@ export class AudioManager {
         }
     }
 
-    // ── Public: resume BGM after mute-off ────────────────────────────────────
     resumeBgm() {
         if (!this.hasStartedBgm || this.isMusicMuted) return;
         this.bgm.play().catch(e => console.warn('[AudioManager] BGM resume error:', e));
@@ -67,13 +76,32 @@ export class AudioManager {
         this.sfxJump.play().catch(e => console.warn('[AudioManager] Jump SFX error:', e));
     }
 
+    playFruit() {
+        if (this.isSfxMuted) return;
+        this.sfxFruit.currentTime = 0;
+        this.sfxFruit.play().catch(e => console.warn('[AudioManager] Fruit SFX error:', e));
+    }
+
+    playExplosion() {
+        if (this.isSfxMuted) return;
+        this.sfxExplosion.currentTime = 0;
+        this.sfxExplosion.play().catch(e => console.warn('[AudioManager] Explosion SFX error:', e));
+    }
+
+    playMeteor() {
+        if (this.isSfxMuted) return;
+        // Clone so multiple meteors don't cut each other off
+        const s = this.sfxMeteor.cloneNode();
+        s.volume = 0.55;
+        s.play().catch(e => console.warn('[AudioManager] Meteor SFX error:', e));
+    }
+
     /** Synthesised "game-over" sound using Web Audio API oscillator. */
     playDie() {
         if (this.isSfxMuted) return;
         const ctx = this._getAudioCtx();
         if (!ctx) return;
 
-        // Descending two-tone hit
         [0, 0.12].forEach((startOffset, i) => {
             const osc  = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -132,7 +160,7 @@ export class AudioManager {
         return this.isSfxMuted;
     }
 
-    // ── Legacy: single global mute (kept for backward compat) ─────────────────
+    // ── Legacy: single global mute ────────────────────────────────────────────
     toggleMute() {
         const newMuted = this.toggleMusicMute();
         this.isSfxMuted = newMuted;
@@ -150,7 +178,6 @@ export class AudioManager {
                 return null;
             }
         }
-        // Resume if suspended (Chrome requires user gesture)
         if (this._audioCtx.state === 'suspended') {
             this._audioCtx.resume().catch(() => {});
         }
