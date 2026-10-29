@@ -139,21 +139,41 @@ class Obstacle {
 // ── Fruit ────────────────────────────────────────────────────────────────────
 
 class Fruit {
-    constructor(gameWidth, canvasHeight, imgMap) {
-        this.x        = gameWidth + 20;
+    constructor(gameWidth, canvasHeight, imgMap, obstacles) {
         this.width    = CONFIG.FRUIT.WIDTH;
         this.height   = CONFIG.FRUIT.HEIGHT;
         this.imgMap   = imgMap;
         // Random fruit type
         const types   = CONFIG.FRUIT.TYPES;
         this.imgKey   = types[Math.floor(Math.random() * types.length)];
-        // Hover just above the ground
-        this.groundLineY = canvasHeight - CONFIG.GROUND_Y;
-        this.y        = this.groundLineY - this.height - 10;
-        this.isDead   = false;
 
-        // Gentle bob
-        this._phase   = Math.random() * Math.PI * 2;
+        // Positioning: Choose a comfortable height reachable by jump or running.
+        // Dinosaur starts at groundY=20, height=55, jumpForce=-18, gravity=1.0. Max jump height ~ 162px!
+        // We place fruits at 2 possible heights:
+        // 1) Low: groundLineY - height - 12 (can pick while running/low jump)
+        // 2) Mid-Air: groundLineY - height - 55 (requires jump)
+        const groundLineY = canvasHeight - CONFIG.GROUND_Y;
+        const isMidAir = Math.random() < 0.5;
+        this.baseY = isMidAir ? groundLineY - this.height - 55 : groundLineY - this.height - 12;
+        this.y = this.baseY;
+
+        // Position on X axis: check existing obstacles to ensure no overlap
+        // Start at gameWidth + 30
+        let spawnX = gameWidth + 30;
+        if (obstacles && obstacles.length > 0) {
+            // Find any obstacle near spawnX (+- 50px)
+            for (const obs of obstacles) {
+                if (Math.abs(obs.x - spawnX) < 60) {
+                    // Push fruit forward ahead of obstacle with safe margin
+                    spawnX = Math.max(spawnX, obs.x + obs.width + 60);
+                }
+            }
+        }
+        this.x = spawnX;
+        this.isDead = false;
+
+        // Gentle bobbing oscillation
+        this._phase = Math.random() * Math.PI * 2;
     }
 
     move(speed) {
@@ -179,11 +199,11 @@ class Fruit {
         const bob = Math.sin(this._phase) * 4;
         const img = this.imgMap[this.imgKey];
         if (img && img.complete && img.naturalWidth > 0) {
-            ctx.drawImage(img, this.x, this.y + bob, this.width, this.height);
+            ctx.drawImage(img, this.x, this.baseY + bob, this.width, this.height);
         } else {
             ctx.fillStyle = '#e74c3c';
             ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.y + this.height / 2 + bob, this.width / 2, 0, Math.PI * 2);
+            ctx.arc(this.x + this.width / 2, this.baseY + this.height / 2 + bob, this.width / 2, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -297,10 +317,6 @@ export class EnemyManager {
         this.imgMap           = {};
         this.canvasHeight     = CONFIG.GAME_HEIGHT;
 
-        // Tracks distance for fruit spawning
-        this._fruitDistanceTravelled = 0;
-        this._nextFruitAtDistance    = CONFIG.FRUIT.SPAWN_INTERVAL;
-
         this._isNight = false;
     }
 
@@ -316,6 +332,10 @@ export class EnemyManager {
         } else {
             this.meteorFramesTill = this._nextMeteorInterval();
         }
+    }
+
+    spawnFruit(canvasHeight) {
+        this._spawnFruit(canvasHeight || this.canvasHeight);
     }
 
     update(speed, canvasHeight) {
@@ -334,13 +354,7 @@ export class EnemyManager {
             return !obs.isOffScreen();
         });
 
-        // ── Fruit distance tracking ──
-        this._fruitDistanceTravelled += speed;
-        if (this._fruitDistanceTravelled >= this._nextFruitAtDistance) {
-            this._spawnFruit(this.canvasHeight);
-            this._nextFruitAtDistance = this._fruitDistanceTravelled + CONFIG.FRUIT.SPAWN_INTERVAL;
-        }
-
+        // ── Fruits update ──
         this.fruits = this.fruits.filter(f => {
             f.move(speed);
             return !f.isOffScreen() && !f.isDead;
@@ -365,8 +379,8 @@ export class EnemyManager {
      * Check collision between player and obstacles/meteors.
      * Returns an object describing what was hit:
      *   { hit: false }                   — no collision
-     *   { hit: true, isMeteor: true }    — meteor hit (stars DO block meteors)
-     *   { hit: true, isMeteor: false }   — tree/flying obstacle hit
+     *   { hit: true, isMeteor: true, meteor }    — meteor hit
+     *   { hit: true, isMeteor: false, obstacle } — tree/flying obstacle hit
      */
     checkCollision(playerRect) {
         for (const obs of this.obstacles) {
@@ -429,8 +443,6 @@ export class EnemyManager {
         this.meteors               = [];
         this.framesTillNext        = this._nextInterval();
         this.meteorFramesTill      = 9999;
-        this._fruitDistanceTravelled = 0;
-        this._nextFruitAtDistance  = CONFIG.FRUIT.SPAWN_INTERVAL;
         this._isNight              = false;
     }
 
@@ -454,7 +466,7 @@ export class EnemyManager {
     }
 
     _spawnFruit(canvasHeight) {
-        this.fruits.push(new Fruit(this.gameWidth, canvasHeight, this.imgMap));
+        this.fruits.push(new Fruit(this.gameWidth, canvasHeight, this.imgMap, this.obstacles));
     }
 
     _nextInterval() {

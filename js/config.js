@@ -105,16 +105,16 @@ const CONFIG = {
         ],
     },
 
-    // Day/Night switching: every 100 distance units, toggle background
+    // Day/Night switching: every 100 score points
     DAY_NIGHT: {
-        SWITCH_INTERVAL: 100, // distance units per switch
+        SCORE_INTERVAL: 100,
     },
 
-    // Fruit system: spawn a fruit every SPAWN_INTERVAL distance units
+    // Fruit system: spawn a fruit every 50 score points
     FRUIT: {
-        SPAWN_INTERVAL: 50,
-        WIDTH:  24,
-        HEIGHT: 24,
+        SCORE_INTERVAL: 50,
+        WIDTH:  28,
+        HEIGHT: 28,
         // 5 fruit images
         TYPES: ['fruit1','fruit2','fruit3','fruit4','fruit5'],
     },

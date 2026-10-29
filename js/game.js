@@ -38,10 +38,10 @@ export class Game {
         this.highScore      = parseInt(localStorage.getItem(CONFIG.SCORE.HIGH_SCORE_KEY)) || 0;
         this.speed          = CONFIG.SPEED.INITIAL;
 
-        // Day/Night state — driven by distance travelled
+        // Day/Night state — driven by score thresholds (100, 200, 300...)
         this.isNight        = false;
-        this._distance      = 0;         // cumulative distance (speed units per frame)
-        this._lastDayNightThreshold = 0; // last threshold at which we toggled
+        this._lastDayNightThreshold = 0; // tracks score threshold (100, 200, 300...)
+        this._lastFruitThreshold    = 0; // tracks fruit threshold (50, 100, 150...)
 
         this.rafId          = null;
         this.bgX            = 0;
@@ -264,8 +264,8 @@ export class Game {
         this.speed          = CONFIG.SPEED.INITIAL;
         this._lastMilestone = 0;
         this._particles     = [];
-        this._distance      = 0;
         this._lastDayNightThreshold = 0;
+        this._lastFruitThreshold    = 0;
         this.isNight        = false;
 
         this.player.reset();
@@ -293,13 +293,23 @@ export class Game {
         // Progressive speed ramp up
         this.speed = Math.min(this.speed + CONFIG.SPEED.INCREMENT, CONFIG.SPEED.MAX);
 
-        // ── Day/Night switching by distance ──
-        this._distance += this.speed;
-        const switchInterval = CONFIG.DAY_NIGHT.SWITCH_INTERVAL;
-        const currentThreshold = Math.floor(this._distance / switchInterval) * switchInterval;
-        if (currentThreshold > this._lastDayNightThreshold) {
-            this._lastDayNightThreshold = currentThreshold;
+        // Update score first in the frame
+        this.score += CONFIG.SCORE.INCREMENT_PER_FRAME;
+
+        // ── Day/Night switching by SCORE (every 100 points: 100, 200, 300...) ──
+        const dayNightInterval = CONFIG.DAY_NIGHT.SCORE_INTERVAL;
+        const currentDayNightThreshold = Math.floor(this.score / dayNightInterval) * dayNightInterval;
+        if (currentDayNightThreshold >= dayNightInterval && currentDayNightThreshold > this._lastDayNightThreshold) {
+            this._lastDayNightThreshold = currentDayNightThreshold;
             this._toggleDayNight();
+        }
+
+        // ── Fruit spawning by SCORE (every 50 points: 50, 100, 150, 200...) ──
+        const fruitInterval = CONFIG.FRUIT.SCORE_INTERVAL;
+        const currentFruitThreshold = Math.floor(this.score / fruitInterval) * fruitInterval;
+        if (currentFruitThreshold >= fruitInterval && currentFruitThreshold > this._lastFruitThreshold) {
+            this._lastFruitThreshold = currentFruitThreshold;
+            this.enemies.spawnFruit(this.canvas.height);
         }
 
         this.player.update();
@@ -330,9 +340,10 @@ export class Game {
         const collisionResult = this.enemies.checkCollision(this.player.getRect());
         if (collisionResult.hit && this.player.invincibleFrames === 0) {
             if (this.player.stars > 0) {
-                // Absorb the hit with a star
+                // Absorb the hit with a star (consumes exactly 1 star)
                 this.player.stars--;
-                this.player.invincibleFrames = 80;
+                // Brief invincibility window so consecutive/overlapping obstacles do not multi-drain stars
+                this.player.invincibleFrames = 40;
                 // Explode the specific obstacle that hit us
                 if (collisionResult.obstacle) collisionResult.obstacle.triggerExplosion();
                 if (collisionResult.meteor)   collisionResult.meteor.triggerExplosion();
@@ -343,7 +354,6 @@ export class Game {
             }
         }
 
-        this.score += CONFIG.SCORE.INCREMENT_PER_FRAME;
         this._checkScoreMilestone();
         this._updateScoreDisplay();
 
