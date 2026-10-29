@@ -80,10 +80,10 @@ const CONFIG = {
         INCREMENT:    0.0035,
     },
 
-    // Obstacle difficulty settings: denser spawns (shorter intervals)
+    // Obstacle difficulty settings: reduced frequency to give players plenty of reaction time
     OBSTACLE: {
-        MIN_INTERVAL: 35,
-        MAX_INTERVAL: 75,
+        MIN_INTERVAL: 65,  // increased from 35 to 65 for comfortable spacing
+        MAX_INTERVAL: 125, // increased from 75 to 125
         TYPES: [
             // Ground Trees (roots firmly grounded)
             { type: 'tree1', width: 44, height: 55, flyingY: false, imgKey: 'tree1', groundSink: 12 },
@@ -94,7 +94,7 @@ const CONFIG = {
             { type: 'tree6', width: 48, height: 56, flyingY: false, imgKey: 'tree6', groundSink: 12 },
             { type: 'tree7', width: 46, height: 72, flyingY: false, imgKey: 'tree7', groundSink: 4 },
             { type: 'tree8', width: 68, height: 65, flyingY: false, imgKey: 'tree8', groundSink: 4 },
-            // Double Trees (Combo hazard for high difficulty!)
+            // Double Trees (Combo hazard)
             { type: 'doubleTree', width: 88, height: 55, flyingY: false, imgKey: 'tree1', isDouble: true, groundSink: 12 },
 
             // Floating Airborne Obstacles (3 distinct monsters across 3 flight altitudes)
@@ -120,11 +120,11 @@ const CONFIG = {
 
     // Meteor system (night only)
     METEOR: {
-        MIN_SPAWN_INTERVAL: 80,   // frames between meteors (min)
-        MAX_SPAWN_INTERVAL: 180,
-        SPEED_MIN: 3.5,
-        SPEED_MAX: 7.0,
-        SIZE: 64, // Enlarged meteor size (64px)
+        MIN_SPAWN_INTERVAL: 100,  // frames between meteors (min)
+        MAX_SPAWN_INTERVAL: 220,
+        SPEED_MIN: 3.0,
+        SPEED_MAX: 6.0,
+        SIZE: 96, // Further enlarged meteor size (96px)
     },
 
     // Explosion sprite sheet: 512×64, 8 frames (64×64 each)

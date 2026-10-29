@@ -147,25 +147,32 @@ class Fruit {
         const types   = CONFIG.FRUIT.TYPES;
         this.imgKey   = types[Math.floor(Math.random() * types.length)];
 
-        // Positioning: Choose a comfortable height reachable by jump or running.
-        // Dinosaur starts at groundY=20, height=55, jumpForce=-18, gravity=1.0. Max jump height ~ 162px!
-        // We place fruits at 2 possible heights:
-        // 1) Low: groundLineY - height - 12 (can pick while running/low jump)
-        // 2) Mid-Air: groundLineY - height - 55 (requires jump)
-        const groundLineY = canvasHeight - CONFIG.GROUND_Y;
+        // Positioning:
+        // Dinosaur starts at ground bottom = CONFIG.GROUND_Y (20)
+        // Dinosaur hitbox bottom = 20, top = 20 + 55 = 75.
+        // Dinosaur canvas draw y = canvasHeight - 20 - 55 + 2 = canvasHeight - 73.
+        // Ground strip top is at groundLineY = canvasHeight - 20.
+        // For ground fruit:
+        // When dino runs on ground, its hitbox bottom is 20 to 75 from canvas bottom.
+        // In canvas coordinates, fruit draw Y:
+        // Ground fruit rests right on the ground line: groundLineY - height = canvasHeight - 20 - 28.
+        // In dinosaur coordinate system (bottom offset from ground):
+        // Ground fruit bottom offset is groundY = 20. Top offset is 20 + 28 = 48.
+        // This is perfectly within dino hitbox (20 to 75)!
         const isMidAir = Math.random() < 0.5;
-        this.baseY = isMidAir ? groundLineY - this.height - 55 : groundLineY - this.height - 12;
-        this.y = this.baseY;
+        this.isMidAir  = isMidAir;
+        // bottomOffset from canvas bottom:
+        // ground fruit: 20 (on ground)
+        // mid-air fruit: 75 (reachable by jumping)
+        this.bottomOffset = isMidAir ? 75 : CONFIG.GROUND_Y;
+        this.canvasHeight = canvasHeight;
 
         // Position on X axis: check existing obstacles to ensure no overlap
-        // Start at gameWidth + 30
         let spawnX = gameWidth + 30;
         if (obstacles && obstacles.length > 0) {
-            // Find any obstacle near spawnX (+- 50px)
             for (const obs of obstacles) {
-                if (Math.abs(obs.x - spawnX) < 60) {
-                    // Push fruit forward ahead of obstacle with safe margin
-                    spawnX = Math.max(spawnX, obs.x + obs.width + 60);
+                if (Math.abs(obs.x - spawnX) < 70) {
+                    spawnX = Math.max(spawnX, obs.x + obs.width + 70);
                 }
             }
         }
@@ -185,25 +192,39 @@ class Fruit {
         return this.x + this.width < 0;
     }
 
-    getRect() {
+    getRect(canvasHeight) {
+        // Player coordinates in Player.getRect():
+        // left: playerX + margin, right: playerX + w - margin
+        // bottom: player.bottom + h (range ~ 20 to 75 on ground)
+        // top: player.bottom (20 on ground)
+        // Note: Player bottom coordinate represents height from ground!
+        // To ensure 100% reliable collision regardless of duck/jump:
+        // A ground fruit sits on the ground (bottom = 20 to 20 + height = 48).
+        // A mid-air fruit sits higher (bottom = 65 to 65 + height = 93).
+        const bob = Math.sin(this._phase) * 4;
+        const b = this.bottomOffset + bob;
         return {
-            left:   this.x + 2,
-            right:  this.x + this.width - 2,
-            top:    this.y,
-            bottom: this.y + this.height,
+            left:   this.x - 6, // extra generous horizontal tolerance so fruit is never missed
+            right:  this.x + this.width + 6,
+            top:    b,
+            bottom: b + this.height + 6,
         };
     }
 
-    draw(ctx) {
+    draw(ctx, canvasHeight) {
         if (this.isDead) return;
+        const cH = canvasHeight || this.canvasHeight;
         const bob = Math.sin(this._phase) * 4;
+        // In Canvas coordinates (0 at top, cH at bottom):
+        // y = cH - bottomOffset - height - bob
+        const drawY = cH - this.bottomOffset - this.height - bob;
         const img = this.imgMap[this.imgKey];
         if (img && img.complete && img.naturalWidth > 0) {
-            ctx.drawImage(img, this.x, this.baseY + bob, this.width, this.height);
+            ctx.drawImage(img, this.x, drawY, this.width, this.height);
         } else {
             ctx.fillStyle = '#e74c3c';
             ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.baseY + this.height / 2 + bob, this.width / 2, 0, Math.PI * 2);
+            ctx.arc(this.x + this.width / 2, drawY + this.height / 2, this.width / 2, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -426,10 +447,12 @@ export class EnemyManager {
      * Returns true if something was exploded.
      */
     explodeRandom(audioMgr) {
-        // Try ground obstacles first
+        // Try ground/flying obstacles first (filter obstacles ahead of player or visible on screen)
         const candidates = this.obstacles.filter(o => !o.isDead && !o.isExploding);
         if (candidates.length > 0) {
-            const target = candidates[Math.floor(Math.random() * candidates.length)];
+            // Sort by x position to preferentially explode the closest obstacle ahead of dinosaur
+            candidates.sort((a, b) => a.x - b.x);
+            const target = candidates[0];
             target.triggerExplosion();
             if (audioMgr) audioMgr.playExplosion();
             return true;
@@ -437,7 +460,8 @@ export class EnemyManager {
         // If no obstacles, try meteors
         const mCandidates = this.meteors.filter(m => !m.isDead && !m.isExploding);
         if (mCandidates.length > 0) {
-            const target = mCandidates[Math.floor(Math.random() * mCandidates.length)];
+            mCandidates.sort((a, b) => b.y - a.y); // lowest/closest meteor first
+            const target = mCandidates[0];
             target.triggerExplosion();
             if (audioMgr) audioMgr.playExplosion();
             return true;
@@ -460,7 +484,7 @@ export class EnemyManager {
             obs.draw(ctx, canvasHeight, expImg);
         }
         for (const f of this.fruits) {
-            f.draw(ctx);
+            f.draw(ctx, canvasHeight);
         }
         for (const m of this.meteors) {
             m.draw(ctx, this.imgMap);
