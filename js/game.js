@@ -223,16 +223,7 @@ export class Game {
             const dx    = (cvs.width - dw) / 2;
             const dy    = (cvs.height - dh) / 2;
 
-            if (charDef.flipH) {
-                // Flip horizontally in preview as well
-                ctx.save();
-                ctx.translate(cvs.width, 0);
-                ctx.scale(-1, 1);
-                ctx.drawImage(img, 0, 0, sw, sh, cvs.width - dx - dw, dy, dw, dh);
-                ctx.restore();
-            } else {
-                ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
-            }
+            ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
         } else {
             ctx.fillStyle = charDef.color || '#2ecc71';
             ctx.beginPath();

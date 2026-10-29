@@ -150,13 +150,8 @@ export class Player {
         const cy = y + h / 2;
         ctx.translate(cx, cy);
 
-        // charDef.flipH: sprite faces left by default → needs horizontal flip to face right.
-        // facingRight=true (default): dino heads to the right (towards obstacles).
-        // For a normal sprite (no flipH): facingRight=true → do NOT mirror.
-        // For flipH sprite:             facingRight=true → DO mirror (flip to face right).
-        // facingRight=false: reverse the above (player pressed left).
-        const needsFlip = this.charDef.flipH ? this.facingRight : !this.facingRight;
-        if (needsFlip) ctx.scale(-1, 1);
+        // Mirror when facing left (all sprites face right naturally)
+        if (!this.facingRight) ctx.scale(-1, 1);
 
         ctx.rotate(rotation);
 

@@ -39,13 +39,12 @@ const CONFIG = {
         {
             id: 'dino3',
             name: '翡翠厚頭龍',
-            description: '重裝衝鋒・4幀剛猛衝鋒 🛡️',
+            description: '重裝衝鋒・6幀剛猛踩踏 🛡️',
             imgSrc: './assets/images/dinosaur3.png',
-            frameW: 92,
+            frameW: 61,
             frameH: 60,
-            numFrames: 4,
+            numFrames: 6,
             color: '#2ecc71',
-            flipH: true,   // sprite faces left by default, flip to face right
         },
         {
             id: 'dino4',
@@ -121,11 +120,11 @@ const CONFIG = {
 
     // Meteor system (night only)
     METEOR: {
-        MIN_SPAWN_INTERVAL: 90,   // frames between meteors (min)
-        MAX_SPAWN_INTERVAL: 200,
-        SPEED_MIN: 3,
-        SPEED_MAX: 7,
-        SIZE: 32,
+        MIN_SPAWN_INTERVAL: 80,   // frames between meteors (min)
+        MAX_SPAWN_INTERVAL: 180,
+        SPEED_MIN: 3.5,
+        SPEED_MAX: 7.0,
+        SIZE: 64, // Enlarged meteor size (64px)
     },
 
     // Explosion sprite sheet: 512×64, 8 frames (64×64 each)

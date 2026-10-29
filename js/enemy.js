@@ -213,10 +213,12 @@ class Fruit {
 
 class Meteor {
     constructor(gameWidth) {
-        this.x      = Math.random() * (gameWidth - 40) + 20;
+        // Spawn across the top, biased to the right since it falls towards bottom-left
+        this.x      = Math.random() * (gameWidth + 100) - 20;
         this.y      = -CONFIG.METEOR.SIZE;
         this.vy     = CONFIG.METEOR.SPEED_MIN + Math.random() * (CONFIG.METEOR.SPEED_MAX - CONFIG.METEOR.SPEED_MIN);
-        this.vx     = (Math.random() - 0.5) * 2;
+        // Move towards bottom-left: negative vx so it travels left as it falls
+        this.vx     = -(1.5 + Math.random() * 2.5);
         this.size   = CONFIG.METEOR.SIZE;
         this.isDead = false;
 
@@ -231,16 +233,20 @@ class Meteor {
     }
 
     isOffScreen(canvasHeight) {
-        return this.y > canvasHeight + this.size;
+        return this.y > canvasHeight + this.size || this.x < -this.size;
     }
 
     getRect() {
-        const margin = 4;
+        // In the enlarged 64px image, the rock is located at the bottom-left.
+        // Hitbox should tightly match the rock body at bottom-left.
+        const hitRadius = this.size * 0.28;
+        const rockCenterX = this.x - this.size * 0.12;
+        const rockCenterY = this.y + this.size * 0.12;
         return {
-            left:   this.x - this.size / 2 + margin,
-            right:  this.x + this.size / 2 - margin,
-            top:    this.y - this.size / 2 + margin,
-            bottom: this.y + this.size / 2 - margin,
+            left:   rockCenterX - hitRadius,
+            right:  rockCenterX + hitRadius,
+            top:    rockCenterY - hitRadius,
+            bottom: rockCenterY + hitRadius,
         };
     }
 
@@ -272,7 +278,7 @@ class Meteor {
                 ctx.globalAlpha = 1 - this.explodeFrame / (cfg.NUM_FRAMES * cfg.FRAME_DURATION);
                 ctx.fillStyle = '#ff4400';
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.size * 0.6, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
@@ -282,9 +288,11 @@ class Meteor {
         ctx.save();
         const meteorImg = imgMap['meteor'];
         if (meteorImg && meteorImg.complete && meteorImg.naturalWidth > 0) {
+            // Natural meteor image: rock is at bottom-left (~376, 633), flame tail is at top-right (~593, 503).
+            // This perfectly faces towards bottom-left with tail pointing to top-right!
             ctx.drawImage(meteorImg, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
         } else {
-            // Fallback: draw a glowing orange/red circle
+            // Fallback: draw glowing circle with tail pointing to top-right
             const grad = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, this.size / 2);
             grad.addColorStop(0, '#fff');
             grad.addColorStop(0.3, '#ff8800');
@@ -293,7 +301,7 @@ class Meteor {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
             ctx.fill();
-            // Trail
+            // Trail pointing to upper-right (opposite of vx, vy)
             ctx.globalAlpha = 0.4;
             ctx.fillStyle = '#ff6600';
             ctx.beginPath();
