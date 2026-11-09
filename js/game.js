@@ -181,7 +181,7 @@ export class Game {
 
             const cvs = document.createElement('canvas');
             cvs.width  = 75;
-            cvs.height = 48;
+            cvs.height = 40;
             cvs.style.display = 'block';
             cvs.style.margin  = '0 auto 2px';
             this._drawCharPreview(cvs, ch);
