@@ -82,8 +82,8 @@ const CONFIG = {
 
     // Obstacle difficulty settings: balanced frequency for challenge with fair reaction time
     OBSTACLE: {
-        MIN_INTERVAL: 50,  // reduced from 65 for slightly more challenge
-        MAX_INTERVAL: 100, // reduced from 125 for slightly more challenge
+        MIN_INTERVAL: 42,  // reduced for higher challenge while preserving reaction time
+        MAX_INTERVAL: 80,  // reduced for less downtime between hazards
         TYPES: [
             // Ground Trees (roots firmly grounded)
             { type: 'tree1', width: 44, height: 55, flyingY: false, imgKey: 'tree1', groundSink: 12 },
@@ -118,10 +118,10 @@ const CONFIG = {
         TYPES: ['fruit1','fruit2','fruit3','fruit4','fruit5'],
     },
 
-    // Meteor system (night only)
+    // Meteor system (night only) - higher frequency and density for challenge
     METEOR: {
-        MIN_SPAWN_INTERVAL: 100,  // frames between meteors (min)
-        MAX_SPAWN_INTERVAL: 220,
+        MIN_SPAWN_INTERVAL: 45,  // reduced from 100 for significantly higher frequency
+        MAX_SPAWN_INTERVAL: 90,  // reduced from 220
         SPEED_MIN: 3.0,
         SPEED_MAX: 6.0,
         SIZE: 96, // Further enlarged meteor size (96px)

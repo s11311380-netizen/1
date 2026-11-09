@@ -370,7 +370,8 @@ export class EnemyManager {
             // Switching to day: stop new meteors; let existing ones expire
             this.meteorFramesTill = 9999;
         } else {
-            this.meteorFramesTill = this._nextMeteorInterval();
+            // Night falls: start meteors quickly!
+            this.meteorFramesTill = 30;
         }
     }
 
@@ -405,6 +406,13 @@ export class EnemyManager {
             this.meteorFramesTill--;
             if (this.meteorFramesTill <= 0) {
                 this.meteors.push(new Meteor(this.gameWidth));
+                // 30% chance to spawn an additional companion meteor in formation
+                if (Math.random() < 0.3) {
+                    const second = new Meteor(this.gameWidth);
+                    second.y -= 50 + Math.random() * 40; // higher in sky
+                    second.x += 80 + Math.random() * 60; // offset to the right
+                    this.meteors.push(second);
+                }
                 this.meteorFramesTill = this._nextMeteorInterval();
             }
         }
