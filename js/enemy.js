@@ -234,14 +234,22 @@ class Fruit {
 
 class Meteor {
     constructor(gameWidth) {
-        // Spawn across the top, biased to the right since it falls towards bottom-left
-        this.x      = Math.random() * (gameWidth + 100) - 20;
-        this.y      = -CONFIG.METEOR.SIZE;
-        this.vy     = CONFIG.METEOR.SPEED_MIN + Math.random() * (CONFIG.METEOR.SPEED_MAX - CONFIG.METEOR.SPEED_MIN);
-        // Move towards bottom-left: negative vx so it travels left as it falls
-        this.vx     = -(1.5 + Math.random() * 2.5);
+        // Spawn from right side of screen, above the top edge
+        // Biased to right half so diagonal path across screen is visible
+        this.x      = gameWidth * 0.5 + Math.random() * (gameWidth * 0.6);
+        this.y      = -CONFIG.METEOR.SIZE - Math.random() * 60;
+        // Strong diagonal: vx magnitude similar to vy so the angle is clearly ~45°
+        this.vy     = 2.5 + Math.random() * 2.0;  // 2.5 ~ 4.5 downward
+        this.vx     = -(3.5 + Math.random() * 2.5); // -3.5 ~ -6.0 leftward (stronger than vy!)
         this.size   = CONFIG.METEOR.SIZE;
         this.isDead = false;
+
+        // Pre-compute rotation angle to align image with velocity vector
+        // The meteor.png natural orientation: rock at bottom-left, flame at top-right
+        // This corresponds to a natural angle of about atan2(1, -1.5) ≈ 146° from +X
+        // We rotate the image to match the actual velocity direction
+        this._naturalAngle = Math.atan2(1, -1.5); // ~146° — the image's intrinsic flight angle
+        this._velocityAngle = Math.atan2(this.vy, this.vx); // actual flight angle
 
         // Explosion state
         this.isExploding  = false;
@@ -309,11 +317,14 @@ class Meteor {
         ctx.save();
         const meteorImg = imgMap['meteor'];
         if (meteorImg && meteorImg.complete && meteorImg.naturalWidth > 0) {
-            // Natural meteor image: rock is at bottom-left (~376, 633), flame tail is at top-right (~593, 503).
-            // This perfectly faces towards bottom-left with tail pointing to top-right!
-            ctx.drawImage(meteorImg, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            // Rotate the image to align with the actual velocity direction
+            // The rotation offset = (actual velocity angle) - (image's natural angle)
+            const rotation = this._velocityAngle - this._naturalAngle;
+            ctx.translate(this.x, this.y);
+            ctx.rotate(rotation);
+            ctx.drawImage(meteorImg, -this.size / 2, -this.size / 2, this.size, this.size);
         } else {
-            // Fallback: draw glowing circle with tail pointing to top-right
+            // Fallback: draw glowing circle with tail pointing to upper-right
             const grad = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, this.size / 2);
             grad.addColorStop(0, '#fff');
             grad.addColorStop(0.3, '#ff8800');

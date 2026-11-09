@@ -80,10 +80,10 @@ const CONFIG = {
         INCREMENT:    0.0035,
     },
 
-    // Obstacle difficulty settings: reduced frequency to give players plenty of reaction time
+    // Obstacle difficulty settings: balanced frequency for challenge with fair reaction time
     OBSTACLE: {
-        MIN_INTERVAL: 65,  // increased from 35 to 65 for comfortable spacing
-        MAX_INTERVAL: 125, // increased from 75 to 125
+        MIN_INTERVAL: 50,  // reduced from 65 for slightly more challenge
+        MAX_INTERVAL: 100, // reduced from 125 for slightly more challenge
         TYPES: [
             // Ground Trees (roots firmly grounded)
             { type: 'tree1', width: 44, height: 55, flyingY: false, imgKey: 'tree1', groundSink: 12 },
