@@ -41,7 +41,7 @@ const CONFIG = {
             name: '翡翠厚頭龍',
             description: '重裝衝鋒・6幀剛猛踩踏 🛡️',
             imgSrc: './assets/images/dinosaur3.png',
-            frameW: 61,
+            frameW: 70,
             frameH: 60,
             numFrames: 6,
             color: '#2ecc71',
@@ -109,9 +109,9 @@ const CONFIG = {
         SCORE_INTERVAL: 100,
     },
 
-    // Fruit system: spawn a fruit every 50 score points
+    // Fruit system: spawn a fruit every 35 score points (increased frequency)
     FRUIT: {
-        SCORE_INTERVAL: 50,
+        SCORE_INTERVAL: 35,
         WIDTH:  28,
         HEIGHT: 28,
         // 5 fruit images
