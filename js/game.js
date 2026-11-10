@@ -248,6 +248,7 @@ export class Game {
         if (this.state === STATE.CHAR_SELECT) return;
 
         this.audioMgr.onUserInteraction();
+        this.audioMgr.setNightMode(false);
         this.audioMgr.startBgm();
 
         this.state          = STATE.PLAYING;
@@ -360,6 +361,7 @@ export class Game {
         if (this.isNight) {
             this.audioMgr.playMeteor();
         }
+        this.audioMgr.setNightMode(this.isNight);
     }
 
     _endGame() {
@@ -612,6 +614,7 @@ export class Game {
 
     _goToCharSelect() {
         this.audioMgr.stopBgm();
+        this.audioMgr.setNightMode(false);
         this.audioMgr.hasStartedBgm = false;
         this.state = STATE.CHAR_SELECT;
         this.gameOverEl.style.display  = 'none';

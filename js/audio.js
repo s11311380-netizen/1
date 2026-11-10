@@ -1,43 +1,55 @@
+import CONFIG from './config.js';
+
 /**
- * AudioManager — handles BGM loop and SFX playback.
+ * AudioManager — handles BGM loop (day & night) and SFX playback.
  *
  * Autoplay policy compliance:
  *   - BGM is only started after the first user interaction (click / keydown).
  *   - SFX uses pre-loaded Audio objects with currentTime reset for instant replay.
  *   - Both BGM and SFX respect the global mute state independently.
+ *   - Seamlessly switches between Day BGM and Night BGM based on game mode.
  */
 export class AudioManager {
     constructor() {
-        // ── BGM ──────────────────────────────────────────────────────────────
-        this.bgm = new Audio('./assets/audio/bgm.mp3');
+        // ── BGM (Day & Night) ────────────────────────────────────────────────
+        const bgmSrc      = CONFIG?.AUDIO?.BGM_SRC       || './assets/audio/bgm.mp3';
+        const bgmNightSrc = CONFIG?.AUDIO?.BGM_NIGHT_SRC || './assets/audio/bgm_night.mp3';
+        const bgmVol      = CONFIG?.AUDIO?.BGM_VOLUME    ?? 0.4;
+
+        this.bgm = new Audio(bgmSrc);
         this.bgm.loop   = true;
-        this.bgm.volume = 0.4;
+        this.bgm.volume = bgmVol;
+
+        this.bgmNight = new Audio(bgmNightSrc);
+        this.bgmNight.loop   = true;
+        this.bgmNight.volume = bgmVol;
 
         // ── SFX: jump ────────────────────────────────────────────────────────
-        this.sfxJump = new Audio('./assets/audio/sfx_jump.wav');
+        this.sfxJump = new Audio(CONFIG?.AUDIO?.SFX_JUMP_SRC || './assets/audio/sfx_jump.wav');
         this.sfxJump.volume = 0.7;
 
         // ── SFX: fruit (eat) ─────────────────────────────────────────────────
-        this.sfxFruit = new Audio('./assets/audio/sfx_fruit.mp3');
+        this.sfxFruit = new Audio(CONFIG?.AUDIO?.SFX_FRUIT_SRC || './assets/audio/sfx_fruit.mp3');
         this.sfxFruit.volume = 0.8;
 
         // ── SFX: explosion ────────────────────────────────────────────────────
-        this.sfxExplosion = new Audio('./assets/audio/sfx_explosion.wav');
+        this.sfxExplosion = new Audio(CONFIG?.AUDIO?.SFX_EXPLOSION_SRC || './assets/audio/sfx_explosion.wav');
         this.sfxExplosion.volume = 0.7;
 
         // ── SFX: meteor ───────────────────────────────────────────────────────
-        this.sfxMeteor = new Audio('./assets/audio/sfx_meteor.wav');
+        this.sfxMeteor = new Audio(CONFIG?.AUDIO?.SFX_METEOR_SRC || './assets/audio/sfx_meteor.wav');
         this.sfxMeteor.volume = 0.65;
 
         // ── SFX: die — generated via Web Audio API ───────────────────────────
         this._audioCtx = null; // lazily created on first interaction
 
         // ── State ─────────────────────────────────────────────────────────────
-        this.isMuted       = false;
-        this.isMusicMuted  = false;
-        this.isSfxMuted    = false;
-        this.hasStartedBgm = false;
+        this.isMuted         = false;
+        this.isMusicMuted    = false;
+        this.isSfxMuted      = false;
+        this.hasStartedBgm   = false;
         this._userInteracted = false;
+        this.isNightMode     = false;
     }
 
     // ── Public: called once on first user interaction ────────────────────────
@@ -52,7 +64,11 @@ export class AudioManager {
         if (this.isMusicMuted) return;
         if (!this._userInteracted) return;
 
-        const p = this.bgm.play();
+        const currentBgm = this.isNightMode ? this.bgmNight : this.bgm;
+        const otherBgm   = this.isNightMode ? this.bgm : this.bgmNight;
+
+        otherBgm.pause();
+        const p = currentBgm.play();
         if (p !== undefined) {
             p.then(() => {
                 this.hasStartedBgm = true;
@@ -62,11 +78,38 @@ export class AudioManager {
 
     resumeBgm() {
         if (!this.hasStartedBgm || this.isMusicMuted) return;
-        this.bgm.play().catch(e => console.warn('[AudioManager] BGM resume error:', e));
+        const currentBgm = this.isNightMode ? this.bgmNight : this.bgm;
+        const otherBgm   = this.isNightMode ? this.bgm : this.bgmNight;
+        otherBgm.pause();
+        currentBgm.play().catch(e => console.warn('[AudioManager] BGM resume error:', e));
     }
 
     stopBgm() {
         this.bgm.pause();
+        this.bgmNight.pause();
+    }
+
+    // ── Public: switch Day / Night BGM ────────────────────────────────────────
+    setNightMode(isNight) {
+        if (this.isNightMode === isNight) return;
+        this.isNightMode = isNight;
+
+        if (!this.hasStartedBgm || this.isMusicMuted) {
+            this.bgm.pause();
+            this.bgmNight.pause();
+            return;
+        }
+
+        const currentBgm = this.isNightMode ? this.bgmNight : this.bgm;
+        const otherBgm   = this.isNightMode ? this.bgm : this.bgmNight;
+
+        otherBgm.pause();
+        otherBgm.currentTime = 0;
+        currentBgm.currentTime = 0;
+        const p = currentBgm.play();
+        if (p !== undefined) {
+            p.catch(e => console.warn('[AudioManager] BGM switch error:', e));
+        }
     }
 
     // ── Public: SFX playback ─────────────────────────────────────────────────
@@ -148,6 +191,7 @@ export class AudioManager {
         this.isMusicMuted = !this.isMusicMuted;
         if (this.isMusicMuted) {
             this.bgm.pause();
+            this.bgmNight.pause();
         } else {
             this.resumeBgm();
         }

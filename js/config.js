@@ -137,6 +137,7 @@ const CONFIG = {
 
     AUDIO: {
         BGM_SRC:           './assets/audio/bgm.mp3',
+        BGM_NIGHT_SRC:     './assets/audio/bgm_night.mp3',
         SFX_JUMP_SRC:      './assets/audio/sfx_jump.wav',
         SFX_FRUIT_SRC:     './assets/audio/sfx_fruit.mp3',
         SFX_EXPLOSION_SRC: './assets/audio/sfx_explosion.wav',
